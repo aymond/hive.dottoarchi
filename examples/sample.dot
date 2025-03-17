@@ -1,0 +1,12 @@
+digraph G {
+    // Applications
+    app1 [label="Web Application", type="application"];
+    app2 [label="Database", type="application"];
+    
+    // Business
+    business1 [label="User", type="business"];
+    
+    // Relationships
+    business1 -> app1 [label="uses"];
+    app1 -> app2 [label="reads/writes"];
+} 

@@ -1,0 +1,31 @@
+mapping_rules:
+  nodes:
+    application:
+      type: "application-component"
+      attributes:
+        - label
+        - description
+    business:
+      type: "business-actor"
+      attributes:
+        - label
+        - description
+    technology:
+      type: "technology-node"
+      attributes:
+        - label
+        - description
+
+  relationships:
+    uses:
+      type: "serving-relationship"
+      attributes:
+        - label
+    flows:
+      type: "flow-relationship"
+      attributes:
+        - label
+
+archimate:
+  namespace: "http://www.opengroup.org/xsd/archimate/3.0/"
+  schema_location: "http://www.opengroup.org/xsd/archimate/3.0/ http://www.opengroup.org/xsd/archimate/3.0/archimate3_Diagram.xsd" 
