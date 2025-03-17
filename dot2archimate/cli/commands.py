@@ -2,6 +2,7 @@ import click
 import os
 import sys
 import logging
+import subprocess
 
 # Configure logging
 logging.basicConfig(
@@ -92,6 +93,26 @@ def batch_convert(input_dir, output_dir, config):
     except Exception as e:
         logger.error(f"Error: {str(e)}")
         click.echo(f"Error: {str(e)}", err=True)
+        sys.exit(1)
+
+@cli.command()
+@click.option('--host', default='127.0.0.1', help='Host to run the server on')
+@click.option('--port', type=int, default=5000, help='Port to run the server on')
+@click.option('--debug', is_flag=True, help='Run in debug mode')
+def web(host, port, debug):
+    """Launch the web interface"""
+    try:
+        from dot2archimate.web.app import create_app
+        
+        click.echo(f"Starting web interface at http://{host}:{port}")
+        app = create_app()
+        app.run(host=host, port=port, debug=debug)
+    except ImportError:
+        click.echo("Error: Flask is not installed. Please install it with 'pip install flask'", err=True)
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Error starting web interface: {str(e)}")
+        click.echo(f"Error starting web interface: {str(e)}", err=True)
         sys.exit(1)
 
 if __name__ == '__main__':

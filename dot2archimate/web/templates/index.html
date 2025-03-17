@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOT to ArchiMate Converter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DOT to ArchiMate Converter</h1>
+            <p>Convert Graphviz DOT files to ArchiMate XML format</p>
+        </header>
+
+        <main>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="messages">
+                        {% for category, message in messages %}
+                            <div class="message {{ category }}">
+                                <i class="fas fa-exclamation-circle"></i> {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="upload">Upload File</button>
+                <button class="tab-btn" data-tab="paste">Paste DOT Content</button>
+            </div>
+
+            <div class="tab-content">
+                <div id="upload" class="tab-pane active">
+                    <form action="{{ url_for('convert') }}" method="post" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="file">Select a DOT file:</label>
+                            <div class="file-input-container">
+                                <input type="file" id="file" name="file" accept=".dot,.gv">
+                                <div class="file-input-label">
+                                    <i class="fas fa-upload"></i>
+                                    <span id="file-name">Choose a file</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn">
+                            <i class="fas fa-exchange-alt"></i> Convert to ArchiMate
+                        </button>
+                    </form>
+                </div>
+
+                <div id="paste" class="tab-pane">
+                    <form action="{{ url_for('convert') }}" method="post">
+                        <div class="form-group">
+                            <label for="dot_text">Paste DOT content:</label>
+                            <textarea id="dot_text" name="dot_text" rows="10" placeholder="digraph G {
+    app1 [label=&quot;Web Application&quot;, type=&quot;application&quot;];
+    app2 [label=&quot;Database&quot;, type=&quot;application&quot;];
+    app1 -> app2 [label=&quot;uses&quot;];
+}"></textarea>
+                        </div>
+                        <button type="submit" class="btn">
+                            <i class="fas fa-exchange-alt"></i> Convert to ArchiMate
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h2>About DOT to ArchiMate Converter</h2>
+                <p>This tool converts Graphviz DOT files to ArchiMate XML format, facilitating the integration of visual diagrams into enterprise architecture repositories.</p>
+                
+                <h3>Features</h3>
+                <ul>
+                    <li>Convert DOT files to ArchiMate XML</li>
+                    <li>Support for various ArchiMate elements and relationships</li>
+                    <li>Configurable mapping between DOT and ArchiMate elements</li>
+                </ul>
+                
+                <h3>Example DOT File</h3>
+                <pre><code>digraph G {
+    // Applications
+    app1 [label="Web Application", type="application"];
+    app2 [label="Database", type="application"];
+    
+    // Business
+    business1 [label="User", type="business"];
+    
+    // Relationships
+    business1 -> app1 [label="uses"];
+    app1 -> app2 [label="reads/writes"];
+}</code></pre>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 DOT to ArchiMate Converter</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html> 

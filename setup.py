@@ -12,10 +12,12 @@ setup(
         "lxml>=5.1.0",
         "pyyaml>=6.0.1",
         "click>=8.1.7",
+        "flask>=2.0.0",
     ],
     entry_points={
         'console_scripts': [
             'dot2archimate=dot2archimate.cli.commands:cli',
+            'dot2archimate-web=dot2archimate.web.run:main',
         ],
     },
 ) 

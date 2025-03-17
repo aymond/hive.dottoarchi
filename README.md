@@ -5,6 +5,7 @@ A robust and user-friendly application that automates the conversion of Graphviz
 ## Features
 
 - Convert Graphviz DOT files to ArchiMate XML format
+- Web interface for file uploads and text conversion
 - REST API for file uploads and text conversion
 - Command-line interface for single file and batch processing
 - Configurable mapping rules between DOT and ArchiMate elements
@@ -29,6 +30,23 @@ pip install -e .
 ```
 
 ## Usage
+
+### Web Interface
+
+Start the web interface:
+
+```bash
+dot2archimate web
+```
+
+Or with custom host and port:
+
+```bash
+dot2archimate web --host 0.0.0.0 --port 8080
+```
+
+The web interface will be available at:
+- `http://localhost:5000/` (default) or the custom host/port you specified
 
 ### API Server
 
@@ -110,6 +128,7 @@ dot2archimate/
 │   ├── api/            # API endpoints
 │   ├── core/           # Core conversion logic
 │   ├── cli/            # Command-line interface
+│   ├── web/            # Web interface
 │   └── config/         # Configuration handling
 ├── tests/              # Test suite
 ├── examples/           # Example DOT files
