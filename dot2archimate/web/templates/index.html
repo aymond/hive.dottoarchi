@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DOT to ArchiMate Converter</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/legal.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
@@ -12,6 +13,13 @@
         <header>
             <h1>DOT to ArchiMate Converter</h1>
             <p>Convert Graphviz DOT files to ArchiMate XML format</p>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="{{ url_for('index') }}" class="active">Home</a></li>
+                    <li><a href="{{ url_for('impressum') }}">Impressum</a></li>
+                    <li><a href="{{ url_for('privacy') }}">Privacy Policy</a></li>
+                </ul>
+            </nav>
         </header>
 
         <main>
@@ -110,7 +118,7 @@
         </main>
 
         <footer>
-            <p>&copy; 2025 DOT to ArchiMate Converter</p>
+            <p>&copy; {{ copyright_year|default('2025') }} DOT to ArchiMate Converter | <a href="{{ url_for('impressum') }}">Impressum</a> | <a href="{{ url_for('privacy') }}">Privacy Policy</a></p>
         </footer>
     </div>
 

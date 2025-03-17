@@ -75,6 +75,37 @@ Convert multiple files:
 dot2archimate batch-convert -i examples/ -o output/
 ```
 
+Configure legal information for the web interface:
+
+```bash
+# Show current legal settings
+dot2archimate legal-config --show
+
+# Create default legal settings
+dot2archimate legal-config --create
+
+# Update specific fields
+dot2archimate legal-config --company-name "Your Company" --email "contact@example.com"
+
+# Update only impressum section
+dot2archimate legal-config --section impressum --street "123 Main St" --zip-city "10115 Berlin"
+
+# Update only privacy section
+dot2archimate legal-config --section privacy --hoster "AWS Cloud Services"
+```
+
+You can also manually configure the legal settings by copying the template:
+
+```bash
+# Copy the template
+cp dot2archimate/web/config/legal_settings.yml.template dot2archimate/web/config/legal_settings.yaml
+
+# Edit the file with your information
+nano dot2archimate/web/config/legal_settings.yaml
+```
+
+Note: The `legal_settings.yaml` file contains personal information and is excluded from version control in `.gitignore`.
+
 ### Terraform Integration
 
 DOT to ArchiMate converter supports Terraform graph output files. You can convert your Terraform infrastructure to ArchiMate models for better visualization and documentation.

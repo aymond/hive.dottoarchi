@@ -4,6 +4,7 @@ import logging
 import tempfile
 import json
 import uuid
+import yaml
 
 from dot2archimate.core.parser import DotParser
 from dot2archimate.core.mapper import ArchimateMapper
@@ -25,10 +26,42 @@ parser = DotParser()
 mapper = ArchimateMapper("config.yaml")
 generator = ArchimateXMLGenerator()
 
+# Load legal configuration
+legal_config_path = os.path.join(os.path.dirname(__file__), 'config', 'legal_settings.yaml')
+template_path = os.path.join(os.path.dirname(__file__), 'config', 'legal_settings.yml.template')
+legal_config = {}
+
+# First check for the actual config file
+if os.path.exists(legal_config_path):
+    try:
+        with open(legal_config_path, 'r', encoding='utf-8') as file:
+            legal_config = yaml.safe_load(file)
+        logger.info("Loaded legal configuration from %s", legal_config_path)
+    except Exception as e:
+        logger.error("Error loading legal configuration: %s", str(e))
+# If not found, check for the template
+elif os.path.exists(template_path):
+    logger.warning("No legal configuration found. Please copy %s to %s and update it with your information.",
+                 template_path, legal_config_path)
+    logger.info("Using template as reference (not for production use)")
+    try:
+        with open(template_path, 'r', encoding='utf-8') as file:
+            legal_config = yaml.safe_load(file)
+    except Exception as e:
+        logger.error("Error loading template configuration: %s", str(e))
+else:
+    logger.warning("Legal configuration file not found at %s", legal_config_path)
+    # Create default config directory if it doesn't exist
+    config_dir = os.path.join(os.path.dirname(__file__), 'config')
+    if not os.path.exists(config_dir):
+        os.makedirs(config_dir)
+        logger.info("Created config directory at %s", config_dir)
+
 @app.route('/')
 def index():
     """Render the main page."""
-    return render_template('index.html')
+    copyright_year = legal_config.get('impressum', {}).get('copyright_year', '2025')
+    return render_template('index.html', copyright_year=copyright_year)
 
 @app.route('/convert', methods=['POST'])
 def convert():
@@ -101,11 +134,13 @@ def visualize(session_id):
         data = session[session_id]
         archimate_data = json.loads(data['archimate_data'])
         filename = data['filename']
+        copyright_year = legal_config.get('impressum', {}).get('copyright_year', '2025')
         
         return render_template('visualize.html', 
                               filename=filename,
                               elements=json.dumps(archimate_data['elements']),
-                              relationships=json.dumps(archimate_data['relationships']))
+                              relationships=json.dumps(archimate_data['relationships']),
+                              copyright_year=copyright_year)
     
     except Exception as e:
         logger.error(f"Error visualizing: {str(e)}")
@@ -122,6 +157,18 @@ def get_archimate_data(session_id):
     archimate_data = json.loads(data['archimate_data'])
     
     return jsonify(archimate_data)
+
+@app.route('/impressum')
+def impressum():
+    """Render the Impressum (Legal Notice) page."""
+    impressum_config = legal_config.get('impressum', {})
+    return render_template('impressum.html', config=impressum_config)
+
+@app.route('/privacy')
+def privacy():
+    """Render the Privacy Policy page."""
+    privacy_config = legal_config.get('privacy', {})
+    return render_template('privacy.html', config=privacy_config)
 
 def create_app():
     """Create and configure the Flask app."""

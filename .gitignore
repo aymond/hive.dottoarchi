@@ -40,4 +40,7 @@ test.dot
 *.log
 .coverage
 htmlcov/
-.pytest_cache/ 
+.pytest_cache/
+
+# Legal settings
+dot2archimate/web/config/legal_settings.yaml 

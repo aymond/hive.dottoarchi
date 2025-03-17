@@ -115,5 +115,100 @@ def web(host, port, debug):
         click.echo(f"Error starting web interface: {str(e)}", err=True)
         sys.exit(1)
 
+@cli.command()
+@click.option('--show', is_flag=True, help='Show current legal settings')
+@click.option('--create', is_flag=True, help='Create default legal settings')
+@click.option('--section', type=click.Choice(['impressum', 'privacy', 'all']), default='all', help='Section to update')
+@click.option('--company-name', help='Company or individual name')
+@click.option('--street', help='Street address')
+@click.option('--zip-city', help='ZIP code and city')
+@click.option('--country', help='Country')
+@click.option('--phone', help='Phone number')
+@click.option('--email', help='Email address')
+@click.option('--copyright-year', help='Copyright year')
+@click.option('--hoster', help='Hosting provider (privacy section only)')
+def legal_config(show, create, section, company_name, street, zip_city, country, phone, email, copyright_year, hoster):
+    """Manage legal settings for the web interface"""
+    from dot2archimate.cli.legal_config import load_config, create_default_config, save_config, show_config
+    
+    try:
+        if show:
+            show_config()
+            return
+        
+        if create:
+            if save_config(create_default_config()):
+                click.echo("Default legal configuration created successfully.")
+                show_config()
+            else:
+                click.echo("Failed to create default legal configuration.")
+            return
+        
+        # If neither show nor create, treat as update
+        config = load_config()
+        
+        # Initialize config if it doesn't exist
+        if not config:
+            config = create_default_config()
+        
+        # Update impressum settings
+        if section == 'impressum' or section == 'all':
+            if 'impressum' not in config:
+                config['impressum'] = {}
+                
+            if company_name:
+                config['impressum']['company_name'] = company_name
+            if street:
+                config['impressum']['street'] = street
+            if zip_city:
+                config['impressum']['zip_city'] = zip_city
+            if country:
+                config['impressum']['country'] = country
+            if phone:
+                config['impressum']['phone'] = phone
+            if email:
+                config['impressum']['email'] = email
+            if copyright_year:
+                config['impressum']['copyright_year'] = copyright_year
+        
+        # Update privacy settings
+        if section == 'privacy' or section == 'all':
+            if 'privacy' not in config:
+                config['privacy'] = {}
+                
+            if company_name:
+                config['privacy']['company_name'] = company_name
+            if street:
+                config['privacy']['street'] = street
+            if zip_city:
+                config['privacy']['zip_city'] = zip_city
+            if country:
+                config['privacy']['country'] = country
+            if phone:
+                config['privacy']['phone'] = phone
+            if email:
+                config['privacy']['email'] = email
+            if copyright_year:
+                config['privacy']['copyright_year'] = copyright_year
+            if hoster:
+                config['privacy']['hoster'] = hoster
+        
+        # Check if any updates were provided
+        if not any([company_name, street, zip_city, country, phone, email, copyright_year, hoster]):
+            click.echo("No updates provided. Use --help to see available options.")
+            return
+        
+        # Save the updated configuration
+        if save_config(config):
+            click.echo("Legal configuration updated successfully.")
+            show_config()
+        else:
+            click.echo("Failed to update legal configuration.")
+            
+    except Exception as e:
+        logger.error(f"Error managing legal configuration: {str(e)}")
+        click.echo(f"Error: {str(e)}", err=True)
+        sys.exit(1)
+
 if __name__ == '__main__':
     cli() 
