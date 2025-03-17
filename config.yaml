@@ -15,34 +15,121 @@ mapping_rules:
       attributes:
         - label
         - description
-    # Terraform specific mappings
+    
+    # AWS resource mappings
     aws_instance:
-      type: "technology-device"
+      type: "technology-node"
       attributes:
         - label
         - shape
     aws_vpc:
-      type: "technology-network"
+      type: "technology-node"
       attributes:
         - label
         - shape
     aws_subnet:
-      type: "technology-network"
+      type: "technology-node"
       attributes:
         - label
         - shape
     aws_security_group:
-      type: "technology-network"
+      type: "technology-node"
       attributes:
         - label
         - shape
+    aws_s3_bucket:
+      type: "technology-artifact"
+      attributes:
+        - label
+        - shape
+    aws_lambda_function:
+      type: "application-function"
+      attributes:
+        - label
+        - shape
+    
+    # Azure resource mappings
+    azurerm_virtual_machine:
+      type: "technology-node"
+      attributes:
+        - label
+        - shape
+    azurerm_linux_virtual_machine:
+      type: "technology-node"
+      attributes:
+        - label
+        - shape
+    azurerm_windows_virtual_machine:
+      type: "technology-node"
+      attributes:
+        - label
+        - shape
+    azurerm_virtual_network:
+      type: "technology-node"
+      attributes:
+        - label
+        - shape
+    azurerm_subnet:
+      type: "technology-node"
+      attributes:
+        - label
+        - shape
+    azurerm_network_security_group:
+      type: "technology-node"
+      attributes:
+        - label
+        - shape
+    azurerm_storage_account:
+      type: "technology-artifact"
+      attributes:
+        - label
+        - shape
+    azurerm_function_app:
+      type: "application-function"
+      attributes:
+        - label
+        - shape
+    
+    # GCP resource mappings
+    google_compute_instance:
+      type: "technology-node"
+      attributes:
+        - label
+        - shape
+    google_compute_network:
+      type: "technology-node"
+      attributes:
+        - label
+        - shape
+    google_compute_subnetwork:
+      type: "technology-node"
+      attributes:
+        - label
+        - shape
+    google_compute_firewall:
+      type: "technology-node"
+      attributes:
+        - label
+        - shape
+    google_storage_bucket:
+      type: "technology-artifact"
+      attributes:
+        - label
+        - shape
+    google_cloudfunctions_function:
+      type: "application-function"
+      attributes:
+        - label
+        - shape
+    
+    # Generic Terraform resources
     provider:
       type: "technology-service"
       attributes:
         - label
         - shape
     var:
-      type: "business-object"
+      type: "business-actor"
       attributes:
         - label
         - shape
@@ -56,6 +143,7 @@ mapping_rules:
       type: "flow-relationship"
       attributes:
         - label
+    
     # Terraform specific relationships
     depends:
       type: "serving-relationship"
@@ -67,6 +155,16 @@ mapping_rules:
         - label
     triggers:
       type: "triggering-relationship"
+      attributes:
+        - label
+    
+    # Cloud-specific relationships
+    composition:
+      type: "composition-relationship"
+      attributes:
+        - label
+    access:
+      type: "access-relationship"
       attributes:
         - label
 

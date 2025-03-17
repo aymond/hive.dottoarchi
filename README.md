@@ -98,9 +98,37 @@ DOT to ArchiMate converter supports Terraform graph output files. You can conver
 The converter automatically detects Terraform-specific elements and maps them to ArchiMate concepts:
 
 - AWS resources (e.g., `aws_instance`, `aws_vpc`) → Technology Node
+- Azure resources (e.g., `azurerm_virtual_machine`, `azurerm_virtual_network`) → Technology Node
+- GCP resources (e.g., `google_compute_instance`, `google_compute_network`) → Technology Node
 - Variables (`var.*`) → Business Actor
 - Providers → Technology Service
 - Dependencies → Flow Relationship
+
+#### Cloud Provider Specific Mappings
+
+##### AWS Resources
+- Compute resources (e.g., `aws_instance`) → Technology Node
+- Network resources (e.g., `aws_vpc`, `aws_subnet`) → Technology Node
+- Storage resources (e.g., `aws_s3_bucket`) → Technology Artifact
+- Serverless resources (e.g., `aws_lambda_function`) → Application Function
+- API resources (e.g., `aws_api_gateway`) → Application Interface
+- Service resources (e.g., `aws_sns_topic`) → Technology Service
+
+##### Azure Resources
+- Compute resources (e.g., `azurerm_virtual_machine`) → Technology Node
+- Network resources (e.g., `azurerm_virtual_network`) → Technology Node
+- Storage resources (e.g., `azurerm_storage_account`) → Technology Artifact
+- Serverless resources (e.g., `azurerm_function_app`) → Application Function
+- API resources (e.g., `azurerm_api_management`) → Application Interface
+- Service resources (e.g., `azurerm_eventhub`) → Technology Service
+
+##### GCP Resources
+- Compute resources (e.g., `google_compute_instance`) → Technology Node
+- Network resources (e.g., `google_compute_network`) → Technology Node
+- Storage resources (e.g., `google_storage_bucket`) → Technology Artifact
+- Serverless resources (e.g., `google_cloudfunctions_function`) → Application Function
+- API resources (e.g., `google_cloud_endpoints_service`) → Application Interface
+- Service resources (e.g., `google_pubsub_topic`) → Technology Service
 
 You can customize these mappings in the `config.yaml` file.
 
