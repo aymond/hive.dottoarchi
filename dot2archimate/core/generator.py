@@ -70,13 +70,25 @@ class ArchimateXMLGenerator:
                 elem,
                 f"{{{self.nsmap['archimate']}}}properties"
             )
-            for prop in element['properties']:
-                property_elem = etree.SubElement(
-                    properties,
-                    f"{{{self.nsmap['archimate']}}}property"
-                )
-                property_elem.set('key', prop['key'])
-                property_elem.set('value', prop['value'])
+            
+            # Handle properties as dictionary or list
+            if isinstance(element['properties'], dict):
+                for key, value in element['properties'].items():
+                    property_elem = etree.SubElement(
+                        properties,
+                        f"{{{self.nsmap['archimate']}}}property"
+                    )
+                    property_elem.set('key', str(key))
+                    property_elem.set('value', str(value))
+            else:
+                # Handle properties as list of dictionaries with 'key' and 'value'
+                for prop in element['properties']:
+                    property_elem = etree.SubElement(
+                        properties,
+                        f"{{{self.nsmap['archimate']}}}property"
+                    )
+                    property_elem.set('key', prop['key'])
+                    property_elem.set('value', prop['value'])
 
     def _add_relationship(self, parent: etree.Element, relationship: Dict[str, Any]):
         """Add an ArchiMate relationship to the XML tree."""

@@ -98,18 +98,29 @@ class ArchimateMapper:
             
             # Check if this is a Terraform graph
             is_terraform = graph_data.get('is_terraform', False)
+            
+            logger.info(f"Processing graph with {len(graph_data['nodes'])} nodes and {len(graph_data['edges'])} edges")
+            logger.info(f"Is Terraform graph: {is_terraform}")
 
             # Map nodes to ArchiMate elements
             for node_id, node in graph_data['nodes'].items():
-                element = self._map_node(node, is_terraform)
-                if element:
-                    archimate_elements.append(element)
+                try:
+                    element = self._map_node(node, is_terraform)
+                    if element:
+                        archimate_elements.append(element)
+                except Exception as e:
+                    logger.error(f"Error mapping node {node_id}: {str(e)}")
+                    raise
 
             # Map edges to ArchiMate relationships
             for edge in graph_data['edges']:
-                relationship = self._map_edge(edge, graph_data['nodes'], is_terraform)
-                if relationship:
-                    archimate_relationships.append(relationship)
+                try:
+                    relationship = self._map_edge(edge, graph_data['nodes'], is_terraform)
+                    if relationship:
+                        archimate_relationships.append(relationship)
+                except Exception as e:
+                    logger.error(f"Error mapping edge {edge.get('source', 'unknown')} -> {edge.get('target', 'unknown')}: {str(e)}")
+                    raise
 
             return {
                 'elements': archimate_elements,
@@ -121,42 +132,80 @@ class ArchimateMapper:
 
     def _map_node(self, node: Dict[str, Any], is_terraform: bool = False) -> Dict[str, Any]:
         """Map a single node to an ArchiMate element."""
-        node_id = node['id']
-        display_id = node.get('display_id', node_id)
-        attributes = node['attributes']
-        
-        # Determine element type
-        node_type = self._determine_node_type(display_id, attributes, is_terraform)
-        if not node_type:
-            return None
+        try:
+            node_id = node['id']
+            display_id = node.get('display_id', node_id)
+            attributes = node['attributes']
+            
+            print(f"DEBUG: Mapping node in mapper: id={node_id}, display_id={display_id}")
+            print(f"DEBUG: Node attributes in mapper: {attributes}")
+            
+            logger.info(f"Mapping node: id={node_id}, display_id={display_id}")
+            
+            # Determine element type
+            node_type = self._determine_node_type(display_id, attributes, is_terraform)
+            logger.info(f"Determined node type: {node_type}")
+            
+            if not node_type:
+                logger.warning(f"Could not determine node type for {display_id}")
+                return None
 
-        archimate_id = str(uuid.uuid4())
-        self.element_ids[node_id] = archimate_id
+            archimate_id = str(uuid.uuid4())
+            self.element_ids[node_id] = archimate_id
 
-        # Get the node name from label or ID
-        node_name = node.get('label', attributes.get('label', display_id))
-        
-        # Clean up Terraform node names
-        if is_terraform and isinstance(node_name, str):
-            # Remove [root] prefix if present
-            if node_name.startswith('[root] '):
-                node_name = node_name[7:]
-            # Remove (expand) suffix if present
-            if ' (expand)' in node_name:
-                node_name = node_name.replace(' (expand)', '')
-            # Handle provider nodes
-            if node_name.startswith('provider['):
-                node_name = node_name.replace('provider[', '').replace(']', '')
-                node_name = node_name.replace('"', '')
-                node_name = f"Provider: {node_name}"
+            # Get the node name from label or ID
+            node_name = node.get('label', attributes.get('label', display_id))
+            
+            # Clean up Terraform node names
+            if is_terraform and isinstance(node_name, str):
+                logger.info(f"Original node name: {node_name}")
+                # Remove [root] prefix if present
+                if node_name.startswith('[root] '):
+                    node_name = node_name[7:]
+                # Remove (expand) suffix if present
+                if ' (expand)' in node_name:
+                    node_name = node_name.replace(' (expand)', '')
+                # Handle provider nodes
+                if node_name.startswith('provider['):
+                    node_name = node_name.replace('provider[', '').replace(']', '')
+                    node_name = node_name.replace('"', '')
+                    node_name = f"Provider: {node_name}"
+                logger.info(f"Cleaned node name: {node_name}")
+            
+            # Prepare documentation
+            documentation = attributes.get('description', '')
+            
+            # Add module information to documentation if available
+            if 'module_path' in attributes:
+                print(f"DEBUG: Found module_path in attributes: {attributes['module_path']}")
+                module_info = f"Module: {attributes['module_path']}"
+                if documentation:
+                    documentation = f"{documentation}\n\n{module_info}"
+                else:
+                    documentation = module_info
+            
+            # Extract properties (excluding certain keys)
+            # Use a simple dictionary comprehension to extract properties
+            properties = {k: v for k, v in attributes.items() if k not in ['type', 'label', 'description']}
+            
+            # Add module path as a property if it exists
+            if 'module_path' in attributes:
+                properties['module_path'] = attributes['module_path']
+            
+            print(f"DEBUG: Final properties: {properties}")
 
-        return {
-            'id': archimate_id,
-            'type': node_type,
-            'name': node_name,
-            'documentation': attributes.get('description', ''),
-            'properties': self._extract_properties(attributes)
-        }
+            return {
+                'id': archimate_id,
+                'type': node_type,
+                'name': node_name,
+                'documentation': documentation,
+                'properties': properties
+            }
+        except Exception as e:
+            logger.error(f"Error in _map_node for {node.get('id', 'unknown')}: {str(e)}")
+            import traceback
+            print(f"DEBUG: Exception traceback: {traceback.format_exc()}")
+            raise
 
     def _map_edge(self, edge: Dict[str, Any], nodes: Dict[str, Dict[str, Any]], is_terraform: bool = False) -> Dict[str, Any]:
         """Map a single edge to an ArchiMate relationship."""
@@ -192,67 +241,102 @@ class ArchimateMapper:
 
     def _determine_node_type(self, node_id: str, attributes: Dict[str, str], is_terraform: bool = False) -> str:
         """Determine ArchiMate element type based on node attributes and ID."""
-        # First check if the node has an explicit type attribute
-        if 'type' in attributes:
-            node_type = attributes['type'].lower()
-            for rule_type, rule in self.mapping_rules.get('mapping_rules', {}).get('nodes', {}).items():
-                if rule_type in node_type:
-                    return rule['type']
-            return node_type  # Return the type as is if no mapping found
-        
-        # For Terraform resources, determine type based on resource type
-        if is_terraform:
-            # Extract resource type from Terraform node ID
-            terraform_pattern = r'([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)'
-            match = re.search(terraform_pattern, node_id)
-            if match:
-                resource_type = match.group(1)
-                # Check if we have a mapping for this resource type
-                if resource_type in self.terraform_resource_types:
-                    return self.terraform_resource_types[resource_type]
-                
-                # Handle variables
-                if resource_type == 'var':
-                    return 'business-actor'
-                
-                # Handle providers
-                if resource_type == 'provider':
-                    return 'technology-service'
-                
-                # Handle cloud-specific resources by prefix
-                if resource_type.startswith('aws_'):
-                    return self._determine_aws_resource_type(resource_type)
-                elif resource_type.startswith('azurerm_') or resource_type.startswith('azuread_'):
-                    return self._determine_azure_resource_type(resource_type)
-                elif resource_type.startswith('google_'):
-                    return self._determine_gcp_resource_type(resource_type)
+        try:
+            logger.info(f"Determining node type for: {node_id}")
             
-            # Handle special cases
-            if 'provider' in node_id:
-                return 'technology-service'
-            if 'var.' in node_id:
-                return 'business-actor'
-            if 'module.' in node_id:
-                return 'grouping'
-            if 'data.' in node_id:
-                return 'business-object'
+            # First check if the node has an explicit type attribute
+            if 'type' in attributes:
+                node_type = attributes['type'].lower()
+                logger.info(f"Node has explicit type attribute: {node_type}")
+                for rule_type, rule in self.mapping_rules.get('mapping_rules', {}).get('nodes', {}).items():
+                    if rule_type in node_type:
+                        return rule['type']
+                return node_type  # Return the type as is if no mapping found
             
-            # Use shape to determine type if available
+            # For Terraform resources, determine type based on resource type
+            if is_terraform:
+                logger.info(f"Processing Terraform node: {node_id}")
+                
+                # Extract resource type from Terraform node ID
+                terraform_pattern = r'([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)'
+                match = re.search(terraform_pattern, node_id)
+                
+                # If it's a module, try to extract the actual resource type
+                if 'module.' in node_id:
+                    logger.info(f"Found module in node ID: {node_id}")
+                    parts = node_id.split('.')
+                    for part in parts:
+                        if part.startswith(('aws_', 'azurerm_', 'azuread_', 'google_')):
+                            logger.info(f"Extracted resource type from module: {part}")
+                            resource_type = part
+                            # Check if we have a mapping for this resource type
+                            if resource_type in self.terraform_resource_types:
+                                return self.terraform_resource_types[resource_type]
+                    
+                    # If we couldn't find a specific resource type but it's a module
+                    if node_id.startswith('module.'):
+                        logger.info(f"No specific resource type found, treating as module: {node_id}")
+                        return 'application-component'
+                
+                if match:
+                    resource_type = match.group(1)
+                    logger.info(f"Extracted resource type: {resource_type}")
+                    
+                    # Check if we have a mapping for this resource type
+                    if resource_type in self.terraform_resource_types:
+                        logger.info(f"Found mapping for resource type: {resource_type} -> {self.terraform_resource_types[resource_type]}")
+                        return self.terraform_resource_types[resource_type]
+                    
+                    # Handle variables
+                    if resource_type == 'var':
+                        logger.info("Resource type is a variable, mapping to business-actor")
+                        return 'business-actor'
+                    
+                    # Handle modules
+                    if resource_type == 'module':
+                        logger.info("Resource type is a module, mapping to application-component")
+                        return 'application-component'
+                    
+                    # Handle providers
+                    if resource_type == 'provider':
+                        logger.info("Resource type is a provider, mapping to technology-service")
+                        return 'technology-service'
+                    
+                    # Handle cloud-specific resources by prefix
+                    if resource_type.startswith('aws_'):
+                        logger.info(f"Resource type is AWS, determining specific type for: {resource_type}")
+                        return self._determine_aws_resource_type(resource_type)
+                    elif resource_type.startswith('azurerm_') or resource_type.startswith('azuread_'):
+                        logger.info(f"Resource type is Azure, determining specific type for: {resource_type}")
+                        return self._determine_azure_resource_type(resource_type)
+                    elif resource_type.startswith('google_'):
+                        logger.info(f"Resource type is GCP, determining specific type for: {resource_type}")
+                        return self._determine_gcp_resource_type(resource_type)
+                
+                # If all else fails but it's a Terraform node, default to technology-node
+                logger.info(f"No specific type found for Terraform node, defaulting to technology-node: {node_id}")
+                return 'technology-node'
+            
+            # Default case: try to determine based on shape attribute
             if 'shape' in attributes:
                 shape = attributes['shape'].lower()
+                logger.info(f"Determining type based on shape: {shape}")
                 if shape == 'box':
-                    return 'technology-node'
+                    return 'application-component'
+                elif shape == 'ellipse':
+                    return 'business-actor'
                 elif shape == 'diamond':
                     return 'technology-service'
                 elif shape == 'note':
-                    return 'business-actor'
-                elif shape == 'ellipse':
-                    return 'application-component'
-                elif shape == 'hexagon':
-                    return 'technology-artifact'
-        
-        # Default to application component if no specific type is determined
-        return 'application-component'
+                    return 'business-object'
+            
+            # If all else fails, default to application-component
+            logger.info(f"No type determined, defaulting to application-component: {node_id}")
+            return 'application-component'
+        except Exception as e:
+            logger.error(f"Error in _determine_node_type for {node_id}: {str(e)}")
+            # Return a default type instead of raising to avoid crashing
+            return 'application-component'
 
     def _determine_aws_resource_type(self, resource_type: str) -> str:
         """Determine ArchiMate element type for AWS resources."""
@@ -376,6 +460,8 @@ class ArchimateMapper:
         if is_terraform:
             source_id = source_node['id']
             target_id = target_node['id']
+            source_attrs = source_node['attributes']
+            target_attrs = target_node['attributes']
             
             # Variable to resource relationship
             if 'var.' in source_id:
@@ -385,13 +471,36 @@ class ArchimateMapper:
             if 'provider' in target_id:
                 return 'serving-relationship'
             
+            # Module relationships
+            if 'module_path' in source_attrs or 'module_path' in target_attrs:
+                # Resource within same module
+                if (source_attrs.get('module_path') and 
+                    target_attrs.get('module_path') and 
+                    source_attrs['module_path'] == target_attrs['module_path']):
+                    return 'composition-relationship'
+                # Resource to its module
+                elif 'module.' in source_id and not 'module_path' in target_attrs:
+                    return 'composition-relationship'
+                # Module to its resource
+                elif 'module.' in target_id and not 'module_path' in source_attrs:
+                    return 'composition-relationship'
+                # Cross-module relationships
+                elif (source_attrs.get('module_path') and 
+                      target_attrs.get('module_path') and 
+                      source_attrs['module_path'] != target_attrs['module_path']):
+                    return 'serving-relationship'
+            
             # Determine relationship based on cloud provider and resource types
-            source_provider = self._get_cloud_provider(source_id)
-            target_provider = self._get_cloud_provider(target_id)
+            source_provider = self._get_cloud_provider(source_node.get('display_id', source_id))
+            target_provider = self._get_cloud_provider(target_node.get('display_id', target_id))
             
             # If both resources are from the same cloud provider
             if source_provider and source_provider == target_provider:
-                return self._determine_cloud_relationship(source_id, target_id, source_provider)
+                return self._determine_cloud_relationship(
+                    source_node.get('display_id', source_id), 
+                    target_node.get('display_id', target_id), 
+                    source_provider
+                )
             
             # Cross-cloud relationships (e.g., AWS to Azure)
             if source_provider and target_provider and source_provider != target_provider:
@@ -402,12 +511,28 @@ class ArchimateMapper:
         
     def _get_cloud_provider(self, node_id: str) -> str:
         """Determine the cloud provider from a node ID."""
-        if 'aws_' in node_id:
-            return 'aws'
-        elif 'azurerm_' in node_id or 'azuread_' in node_id:
-            return 'azure'
-        elif 'google_' in node_id:
-            return 'gcp'
+        # Strip any module prefixes to focus on the resource type
+        if isinstance(node_id, str):
+            # If we have a module reference, extract just the resource type
+            if 'module.' in node_id:
+                parts = node_id.split('.')
+                # Make sure we have enough parts before accessing
+                if len(parts) >= 2:
+                    # For something like module.vpc.google_compute_network.vpc
+                    # Try to extract the resource type (google_compute_network)
+                    for part in parts:
+                        if part.startswith(('aws_', 'azurerm_', 'azuread_', 'google_')):
+                            node_id = part
+                            break
+            
+            # Check for cloud provider prefixes
+            if 'aws_' in node_id:
+                return 'aws'
+            elif 'azurerm_' in node_id or 'azuread_' in node_id:
+                return 'azure'
+            elif 'google_' in node_id:
+                return 'gcp'
+        
         return None
         
     def _determine_cloud_relationship(self, source_id: str, target_id: str, provider: str) -> str:

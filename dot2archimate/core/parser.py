@@ -89,6 +89,38 @@ class DotParser:
                 # Clean up node_id for display
                 display_id = node_id.replace('[root] ', '').replace(' (expand)', '')
                 
+                # Extract the resource part from module references
+                # For module resources like "module.vpc.google_compute_network.vpc"
+                # Extract just the resource type and name
+                if 'module.' in display_id:
+                    print(f"DEBUG: Processing module node: {display_id}")
+                    # Get all parts of the module path
+                    parts = display_id.split('.')
+                    print(f"DEBUG: Parts: {parts}")
+                    
+                    # Make sure we have at least 3 parts (module.name.resource)
+                    if len(parts) >= 3:
+                        # Store original module path as a string
+                        module_parts = parts[:-2] if len(parts) > 2 else [parts[0]]
+                        module_path = '.'.join(module_parts)
+                        print(f"DEBUG: Module path: {module_path}")
+                        
+                        # Get the resource part (last two components)
+                        resource_parts = parts[-2:] if len(parts) >= 2 else [display_id]
+                        resource_part = '.'.join(resource_parts)
+                        print(f"DEBUG: Resource part: {resource_part}")
+                        
+                        # Add module information to attributes
+                        attrs['module_path'] = module_path
+                        
+                        # Store both the full path and the resource part
+                        display_id = resource_part
+                        
+                        # Update the label to show just the resource
+                        if label == node_id:  # If label is the same as node_id, update it
+                            label = resource_part
+                
+                print(f"DEBUG: Node attributes: {attrs}")
                 nodes[node_id] = {
                     'id': node_id,
                     'display_id': display_id,

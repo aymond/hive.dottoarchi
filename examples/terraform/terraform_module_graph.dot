@@ -1,0 +1,31 @@
+digraph {
+	compound = "true"
+	newrank = "true"
+	subgraph "root" {
+		"[root] module.vpc.google_compute_network.vpc (expand)" [label = "google_compute_network.vpc", shape = "box"]
+		"[root] module.vpc.var.vpc_name (expand)" [label = "var.vpc_name", shape = "ellipse"]
+		"[root] module.vpc.provider[\"registry.terraform.io/hashicorp/google\"] (close)" [label = "provider[\"registry.terraform.io/hashicorp/google\"]", shape = "diamond"]
+		"[root] module.vpc.google_compute_network.vpc (expand)" -> "[root] module.vpc.var.vpc_name (expand)"
+		"[root] module.vpc.google_compute_network.vpc (expand)" -> "[root] module.vpc.provider[\"registry.terraform.io/hashicorp/google\"] (close)"
+		"[root] provider[\"registry.terraform.io/hashicorp/google\"]" [label = "provider[\"registry.terraform.io/hashicorp/google\"]", shape = "diamond"]
+		"[root] module.vpc.provider[\"registry.terraform.io/hashicorp/google\"] (close)" -> "[root] provider[\"registry.terraform.io/hashicorp/google\"]"
+		"[root] module.vpc (close)" -> "[root] module.vpc.google_compute_network.vpc (expand)"
+		"[root] module.vpc (expand)" [label = "module.vpc", shape = "box"]
+		"[root] module.vpc (expand)" -> "[root] provider[\"registry.terraform.io/hashicorp/google\"]"
+		"[root] output.vpc_id (expand)" [label = "output.vpc_id", shape = "note"]
+		"[root] output.vpc_id (expand)" -> "[root] module.vpc (close)"
+		"[root] module.instance.google_compute_instance.vm (expand)" [label = "google_compute_instance.vm", shape = "box"]
+		"[root] module.instance.var.instance_name (expand)" [label = "var.instance_name", shape = "ellipse"]
+		"[root] module.instance.google_compute_instance.vm (expand)" -> "[root] module.instance.var.instance_name (expand)"
+		"[root] module.instance.google_compute_instance.vm (expand)" -> "[root] module.vpc (close)"
+		"[root] module.instance.provider[\"registry.terraform.io/hashicorp/google\"] (close)" [label = "provider[\"registry.terraform.io/hashicorp/google\"]", shape = "diamond"]
+		"[root] module.instance.provider[\"registry.terraform.io/hashicorp/google\"] (close)" -> "[root] provider[\"registry.terraform.io/hashicorp/google\"]"
+		"[root] module.instance (close)" -> "[root] module.instance.google_compute_instance.vm (expand)"
+		"[root] module.instance (expand)" [label = "module.instance", shape = "box"]
+		"[root] module.instance (expand)" -> "[root] provider[\"registry.terraform.io/hashicorp/google\"]"
+		"[root] output.instance_ip (expand)" [label = "output.instance_ip", shape = "note"]
+		"[root] output.instance_ip (expand)" -> "[root] module.instance (close)"
+		"[root] root" -> "[root] output.instance_ip (expand)"
+		"[root] root" -> "[root] output.vpc_id (expand)"
+	}
+} 

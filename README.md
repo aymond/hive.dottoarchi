@@ -165,11 +165,24 @@ Note: The `legal_settings.yaml` file contains personal information and is exclud
 
 DOT to ArchiMate converter supports Terraform graph output files. You can convert your Terraform infrastructure to ArchiMate models for better visualization and documentation.
 
+#### Terraform Module Support
+
+The converter handles Terraform modules by preserving the module structure in the ArchiMate model. Module paths are included in the documentation of elements and displayed in the visualization.
+
+- Module resources (e.g., `module.vpc.google_compute_network.vpc`) are mapped with the module path preserved
+- Module names (e.g., `module.vpc`) are mapped to Application Component elements
+- Module structure is represented in the visualization, showing the relationship between modules and their resources
+
 ### How to use
 
 1. Generate a Terraform graph:
    ```bash
    terraform graph > terraform_graph.dot
+   ```
+
+   For graphs with modules, you can use the expand option:
+   ```bash
+   terraform graph -type=plan -draw-cycles > terraform_graph.dot
    ```
 
 2. Convert the DOT file to ArchiMate XML:
