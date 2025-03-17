@@ -208,11 +208,21 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch(`/api/archimate-data/${sessionId}`)
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                    if (response.status === 404) {
+                        throw new Error('Session has expired. Please convert your file again.');
+                    } else {
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Network response was not ok');
+                        });
+                    }
                 }
                 return response.json();
             })
             .then(data => {
+                if (!data || !data.elements || !data.relationships) {
+                    throw new Error('Invalid data structure received from the server');
+                }
+                
                 // Create a request to convert the data to XML
                 return fetch('/convert', {
                     method: 'POST',
@@ -224,7 +234,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     })
                 });
             })
-            .then(response => response.blob())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to generate XML');
+                }
+                return response.blob();
+            })
             .then(blob => {
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
@@ -233,7 +248,15 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Error downloading XML:', error);
-                alert('Error downloading XML. Please try again.');
+                
+                // Show a more helpful error message
+                if (error.message.includes('Session has expired')) {
+                    alert('Session has expired. Please go back to the home page and convert your file again.');
+                    // Optionally redirect after a short delay
+                    setTimeout(() => window.location.href = '/', 3000);
+                } else {
+                    alert(`Error downloading XML: ${error.message}`);
+                }
             });
     });
 

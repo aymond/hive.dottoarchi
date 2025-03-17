@@ -102,10 +102,9 @@ def batch_convert(input_dir, output_dir, config):
 def web(host, port, debug):
     """Launch the web interface"""
     try:
-        from dot2archimate.web.app import create_app
+        from dot2archimate.web.app import app
         
         click.echo(f"Starting web interface at http://{host}:{port}")
-        app = create_app()
         app.run(host=host, port=port, debug=debug)
     except ImportError:
         click.echo("Error: Flask is not installed. Please install it with 'pip install flask'", err=True)
