@@ -103,6 +103,24 @@ label {
     font-weight: 600;
 }
 
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.help-text {
+    margin-top: 5px;
+    font-size: 14px;
+    color: #666;
+    font-style: italic;
+}
+
 input[type="file"] {
     position: absolute;
     width: 0.1px;
