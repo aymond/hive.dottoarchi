@@ -31,45 +31,141 @@ class DotParser:
 
     def _parse_dot_content(self, content: str) -> Dict[str, Any]:
         """Parse DOT content using regex to extract nodes and edges."""
-        nodes = []
+        nodes = {}
         edges = []
         graph_attrs = {}
         node_ids = set()  # Keep track of node IDs to avoid duplicates
+        subgraphs = []
 
         # Remove comments and normalize whitespace
         content = re.sub(r'//.*?\n|/\*.*?\*/', '', content, flags=re.DOTALL)
-        content = ' '.join(content.split())
-
+        
+        # Check if this is a Terraform graph
+        is_terraform = 'provider[' in content or '[root]' in content
+        
         # Extract graph attributes
-        graph_attr_pattern = r'graph\s*\[(.*?)\]'
-        graph_attr_match = re.search(graph_attr_pattern, content)
+        graph_attr_pattern = r'(?:digraph|graph)\s+(?:\w+\s+)?{([^{]*?)(?:subgraph|node|edge|"|\w+\s*\[|$)'
+        graph_attr_match = re.search(graph_attr_pattern, content, re.DOTALL)
         if graph_attr_match:
-            attrs = self._parse_attributes(graph_attr_match.group(1))
+            attr_text = graph_attr_match.group(1).strip()
+            attrs = self._parse_graph_attributes(attr_text)
             graph_attrs.update(attrs)
 
-        # Extract nodes
-        node_pattern = r'([a-zA-Z0-9_]+)\s*\[(.*?)\]'
-        for match in re.finditer(node_pattern, content):
-            node_id = match.group(1)
-            attrs = self._parse_attributes(match.group(2))
-            if node_id not in node_ids:
-                nodes.append({
+        # Extract subgraphs
+        subgraph_pattern = r'subgraph\s+"?(\w+)"?\s+{(.*?)}'
+        for match in re.finditer(subgraph_pattern, content, re.DOTALL):
+            subgraph_name = match.group(1)
+            subgraph_content = match.group(2)
+            subgraphs.append({
+                'name': subgraph_name,
+                'content': subgraph_content
+            })
+
+        # For Terraform graphs, extract nodes with special handling
+        if is_terraform:
+            # Extract nodes with attributes - Terraform style
+            terraform_node_pattern = r'"(\[root\][^"]+)"\s*\[(.*?)\]'
+            for match in re.finditer(terraform_node_pattern, content):
+                node_id = match.group(1)
+                attrs_str = match.group(2)
+                
+                # Skip nodes that are not actual resources
+                if node_id in ['"true"', '"root"', '"]"', '"] (close)"'] or '[label =' in node_id or ', shape =' in node_id:
+                    continue
+                
+                # Parse attributes
+                attrs = self._parse_attributes(attrs_str)
+                
+                # Use label if available, otherwise use node_id
+                label = attrs.get('label', node_id).strip('"')
+                
+                # Clean up label
+                label = label.replace('\\', '')
+                
+                # Skip if we've already processed this node
+                if node_id in nodes:
+                    continue
+                
+                # Clean up node_id for display
+                display_id = node_id.replace('[root] ', '').replace(' (expand)', '')
+                
+                nodes[node_id] = {
                     'id': node_id,
+                    'display_id': display_id,
+                    'label': label,
                     'attributes': attrs
-                })
+                }
+                node_ids.add(node_id)
+        else:
+            # Extract nodes with attributes - standard DOT style
+            node_pattern = r'(?:^|\s)"?([^"\s\[]+)"?\s*(?:\[([^\]]*)\])?'
+            for match in re.finditer(node_pattern, content):
+                node_id = match.group(1)
+                attrs_str = match.group(2) if match.group(2) else ""
+                
+                # Skip if this is an edge definition
+                if "->" in node_id:
+                    continue
+                
+                # Parse attributes
+                attrs = self._parse_attributes(attrs_str)
+                
+                # Use label if available, otherwise use node_id
+                label = attrs.get('label', node_id).strip('"')
+                
+                # Skip if we've already processed this node
+                if node_id in nodes:
+                    continue
+                
+                nodes[node_id] = {
+                    'id': node_id,
+                    'display_id': node_id,
+                    'label': label,
+                    'attributes': attrs
+                }
                 node_ids.add(node_id)
 
         # Extract edges
-        edge_pattern = r'([a-zA-Z0-9_]+)\s*->\s*([a-zA-Z0-9_]+)\s*\[(.*?)\]'
-        for match in re.finditer(edge_pattern, content):
-            source = match.group(1)
-            target = match.group(2)
-            attrs = self._parse_attributes(match.group(3))
-            edges.append({
-                'source': source,
-                'target': target,
-                'attributes': attrs
-            })
+        if is_terraform:
+            # Terraform-specific edge extraction
+            edge_pattern = r'"(\[root\][^"]+)"\s*->\s*"(\[root\][^"]+)"'
+            edge_matches = re.finditer(edge_pattern, content)
+            
+            for match in edge_matches:
+                source_id = match.group(1)
+                target_id = match.group(2)
+                
+                # Skip edges with non-existent nodes
+                if source_id not in nodes or target_id not in nodes:
+                    continue
+                
+                edges.append({
+                    'source': source_id,
+                    'target': target_id,
+                    'attributes': {}
+                })
+        else:
+            # Standard DOT edge extraction
+            edge_pattern = r'"?([^"\s]+)"?\s*->\s*"?([^"\s\[]+)"?\s*(?:\[([^\]]*)\])?'
+            edge_matches = re.finditer(edge_pattern, content)
+            
+            for match in edge_matches:
+                source_id = match.group(1)
+                target_id = match.group(2)
+                attrs_str = match.group(3) if match.group(3) else ""
+                
+                # Parse attributes
+                attrs = self._parse_attributes(attrs_str)
+                
+                # Skip edges with non-existent nodes
+                if source_id not in nodes or target_id not in nodes:
+                    continue
+                
+                edges.append({
+                    'source': source_id,
+                    'target': target_id,
+                    'attributes': attrs
+                })
 
         # Check for invalid syntax
         if not (nodes or edges) and 'digraph' in content:
@@ -78,8 +174,24 @@ class DotParser:
         return {
             'nodes': nodes,
             'edges': edges,
-            'graph_attrs': graph_attrs
+            'graph_attrs': graph_attrs,
+            'subgraphs': subgraphs,
+            'is_terraform': is_terraform
         }
+
+    def _parse_graph_attributes(self, attr_string: str) -> Dict[str, str]:
+        """Parse graph attribute string into dictionary."""
+        attrs = {}
+        # Split by newline or semicolon
+        lines = re.split(r'[;\n]', attr_string)
+        for line in lines:
+            if '=' in line:
+                key, value = line.split('=', 1)
+                key = key.strip()
+                value = value.strip().strip('"')
+                if key and value:
+                    attrs[key] = value
+        return attrs
 
     def _parse_attributes(self, attr_string: str) -> Dict[str, str]:
         """Parse attribute string into dictionary."""

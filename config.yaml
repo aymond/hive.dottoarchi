@@ -15,6 +15,37 @@ mapping_rules:
       attributes:
         - label
         - description
+    # Terraform specific mappings
+    aws_instance:
+      type: "technology-device"
+      attributes:
+        - label
+        - shape
+    aws_vpc:
+      type: "technology-network"
+      attributes:
+        - label
+        - shape
+    aws_subnet:
+      type: "technology-network"
+      attributes:
+        - label
+        - shape
+    aws_security_group:
+      type: "technology-network"
+      attributes:
+        - label
+        - shape
+    provider:
+      type: "technology-service"
+      attributes:
+        - label
+        - shape
+    var:
+      type: "business-object"
+      attributes:
+        - label
+        - shape
 
   relationships:
     uses:
@@ -23,6 +54,19 @@ mapping_rules:
         - label
     flows:
       type: "flow-relationship"
+      attributes:
+        - label
+    # Terraform specific relationships
+    depends:
+      type: "serving-relationship"
+      attributes:
+        - label
+    creates:
+      type: "assignment-relationship"
+      attributes:
+        - label
+    triggers:
+      type: "triggering-relationship"
       attributes:
         - label
 

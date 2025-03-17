@@ -1,0 +1,22 @@
+digraph {
+	compound = "true"
+	newrank = "true"
+	subgraph "root" {
+		"[root] aws_instance.web (expand)" [label = "aws_instance.web", shape = "box"]
+		"[root] aws_security_group.allow_http (expand)" [label = "aws_security_group.allow_http", shape = "box"]
+		"[root] aws_subnet.main (expand)" [label = "aws_subnet.main", shape = "box"]
+		"[root] aws_vpc.main (expand)" [label = "aws_vpc.main", shape = "box"]
+		"[root] provider[\"registry.terraform.io/hashicorp/aws\"]" [label = "provider[\"registry.terraform.io/hashicorp/aws\"]", shape = "diamond"]
+		"[root] var.ami_id" [label = "var.ami_id", shape = "note"]
+		"[root] var.instance_type" [label = "var.instance_type", shape = "note"]
+		"[root] aws_instance.web (expand)" -> "[root] aws_security_group.allow_http (expand)"
+		"[root] aws_instance.web (expand)" -> "[root] aws_subnet.main (expand)"
+		"[root] aws_instance.web (expand)" -> "[root] var.ami_id"
+		"[root] aws_instance.web (expand)" -> "[root] var.instance_type"
+		"[root] aws_security_group.allow_http (expand)" -> "[root] aws_vpc.main (expand)"
+		"[root] aws_subnet.main (expand)" -> "[root] aws_vpc.main (expand)"
+		"[root] aws_vpc.main (expand)" -> "[root] provider[\"registry.terraform.io/hashicorp/aws\"]"
+		"[root] provider[\"registry.terraform.io/hashicorp/aws\"] (close)" -> "[root] aws_instance.web (expand)"
+		"[root] root" -> "[root] provider[\"registry.terraform.io/hashicorp/aws\"] (close)"
+	}
+} 
