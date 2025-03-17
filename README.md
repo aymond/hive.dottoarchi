@@ -29,6 +29,61 @@ cd dot2archimate
 pip install -e .
 ```
 
+### Using Docker
+
+You can also run the DOT to ArchiMate Converter using Docker:
+
+```bash
+# Build the Docker image
+docker build -t dot2archimate .
+
+# Run the web interface
+docker run -p 5000:5000 dot2archimate
+
+# Or run with a specific command
+docker run dot2archimate convert -i examples/sample.dot -o output.xml
+
+# Mount volumes for persistent storage and easy access to files
+docker run -p 5000:5000 -v $(pwd)/examples:/app/examples -v $(pwd)/output:/app/output dot2archimate
+
+# Configure legal settings
+docker run -it dot2archimate legal-config --create
+```
+
+For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
+
+#### Using Docker Compose
+
+Create a `docker-compose.yml` file:
+
+```yaml
+version: '3'
+
+services:
+  dot2archimate:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./examples:/app/examples
+      - ./output:/app/output
+      - ./config:/app/dot2archimate/web/config
+```
+
+Then run:
+
+```bash
+docker-compose up -d
+```
+
+#### Environment Variables
+
+You can pass environment variables to configure the application:
+
+```bash
+docker run -p 5000:5000 -e SECRET_KEY=your_secret_key dot2archimate
+```
+
 ## Usage
 
 ### Web Interface
@@ -226,7 +281,11 @@ dot2archimate/
 │   └── config/         # Configuration handling
 ├── tests/              # Test suite
 ├── examples/           # Example DOT files
+├── config/             # Docker configuration files
 ├── config.yaml         # Default configuration
+├── docker-compose.yml  # Docker Compose configuration
+├── Dockerfile          # Docker image definition
+├── DOCKER.md           # Docker documentation
 └── README.md           # This file
 ```
 

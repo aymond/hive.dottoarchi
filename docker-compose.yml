@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  dot2archimate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dot2archimate
+    container_name: dot2archimate
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./examples:/app/examples
+      - ./output:/app/output
+      - ./config:/app/dot2archimate/web/config
+    environment:
+      - SECRET_KEY=change_this_in_production
+    # Uncomment to use .env file instead of hardcoded environment variables
+    # env_file:
+    #   - .env
+    restart: unless-stopped 
