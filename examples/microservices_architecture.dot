@@ -1,0 +1,78 @@
+digraph MicroservicesArchitecture {
+    // API Gateway
+    api_gateway [label="API Gateway", type="application", shape="box"];
+    
+    // Microservices
+    user_service [label="User Service", type="application", shape="box"];
+    product_service [label="Product Service", type="application", shape="box"];
+    order_service [label="Order Service", type="application", shape="box"];
+    payment_service [label="Payment Service", type="application", shape="box"];
+    notification_service [label="Notification Service", type="application", shape="box"];
+    
+    // Shared Services
+    auth_service [label="Authentication Service", type="application", shape="box"];
+    config_service [label="Configuration Service", type="application", shape="box"];
+    
+    // Data Stores
+    user_db [label="User Database", type="technology", shape="box"];
+    product_db [label="Product Database", type="technology", shape="box"];
+    order_db [label="Order Database", type="technology", shape="box"];
+    
+    // Infrastructure
+    service_registry [label="Service Registry", type="technology", shape="diamond"];
+    message_broker [label="Message Broker", type="technology", shape="diamond"];
+    load_balancer [label="Load Balancer", type="technology", shape="diamond"];
+    cache [label="Redis Cache", type="technology", shape="box"];
+    
+    // External Services
+    payment_provider [label="External Payment Provider", type="application", shape="box"];
+    email_service [label="Email Service", type="application", shape="box"];
+    
+    // API Gateway to Services
+    api_gateway -> user_service [label="routes to"];
+    api_gateway -> product_service [label="routes to"];
+    api_gateway -> order_service [label="routes to"];
+    api_gateway -> payment_service [label="routes to"];
+    
+    // Service Discovery
+    user_service -> service_registry [label="registers with"];
+    product_service -> service_registry [label="registers with"];
+    order_service -> service_registry [label="registers with"];
+    payment_service -> service_registry [label="registers with"];
+    notification_service -> service_registry [label="registers with"];
+    
+    // Service Communication
+    order_service -> user_service [label="calls"];
+    order_service -> product_service [label="calls"];
+    order_service -> payment_service [label="calls"];
+    order_service -> message_broker [label="publishes to"];
+    
+    notification_service -> message_broker [label="subscribes to"];
+    notification_service -> email_service [label="sends via"];
+    
+    payment_service -> payment_provider [label="integrates with"];
+    
+    // Authentication
+    api_gateway -> auth_service [label="validates with"];
+    user_service -> auth_service [label="uses"];
+    
+    // Configuration
+    user_service -> config_service [label="reads from"];
+    product_service -> config_service [label="reads from"];
+    order_service -> config_service [label="reads from"];
+    
+    // Data Access
+    user_service -> user_db [label="stores in"];
+    product_service -> product_db [label="stores in"];
+    order_service -> order_db [label="stores in"];
+    
+    // Caching
+    product_service -> cache [label="caches in"];
+    user_service -> cache [label="caches in"];
+    
+    // Load Balancing
+    load_balancer -> api_gateway [label="distributes to"];
+    load_balancer -> user_service [label="distributes to"];
+    load_balancer -> product_service [label="distributes to"];
+}
+

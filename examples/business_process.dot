@@ -1,0 +1,61 @@
+digraph BusinessProcess {
+    // Business Actors
+    customer [label="Customer", type="business", shape="ellipse"];
+    sales_rep [label="Sales Representative", type="business", shape="ellipse"];
+    warehouse_staff [label="Warehouse Staff", type="business", shape="ellipse"];
+    finance_team [label="Finance Team", type="business", shape="ellipse"];
+    
+    // Business Processes
+    lead_generation [label="Lead Generation", type="business", shape="box"];
+    sales_process [label="Sales Process", type="business", shape="box"];
+    order_processing [label="Order Processing", type="business", shape="box"];
+    inventory_check [label="Inventory Check", type="business", shape="box"];
+    order_fulfillment [label="Order Fulfillment", type="business", shape="box"];
+    invoicing [label="Invoicing", type="business", shape="box"];
+    payment_collection [label="Payment Collection", type="business", shape="box"];
+    customer_support [label="Customer Support", type="business", shape="box"];
+    
+    // Business Services
+    order_service [label="Order Service", type="application", shape="box"];
+    inventory_service [label="Inventory Service", type="application", shape="box"];
+    payment_service [label="Payment Service", type="application", shape="box"];
+    crm_service [label="CRM Service", type="application", shape="box"];
+    
+    // Business Objects
+    customer_data [label="Customer Data", type="business", shape="note"];
+    order_data [label="Order Data", type="business", shape="note"];
+    product_catalog [label="Product Catalog", type="business", shape="note"];
+    
+    // Process Flow
+    lead_generation -> sales_process [label="feeds"];
+    customer -> sales_process [label="engages with"];
+    sales_rep -> sales_process [label="manages"];
+    sales_process -> order_processing [label="creates"];
+    
+    order_processing -> inventory_check [label="triggers"];
+    inventory_check -> order_fulfillment [label="if available"];
+    warehouse_staff -> order_fulfillment [label="executes"];
+    
+    order_processing -> invoicing [label="generates"];
+    finance_team -> invoicing [label="reviews"];
+    invoicing -> payment_collection [label="triggers"];
+    customer -> payment_collection [label="pays"];
+    
+    customer -> customer_support [label="contacts"];
+    
+    // Business to Application Services
+    sales_process -> crm_service [label="uses"];
+    order_processing -> order_service [label="uses"];
+    inventory_check -> inventory_service [label="uses"];
+    payment_collection -> payment_service [label="uses"];
+    
+    // Business Objects
+    crm_service -> customer_data [label="manages"];
+    order_service -> order_data [label="manages"];
+    inventory_service -> product_catalog [label="manages"];
+    
+    // Cross-process relationships
+    order_fulfillment -> customer_support [label="may require"];
+    payment_collection -> customer_support [label="may require"];
+}
+

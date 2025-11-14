@@ -93,22 +93,22 @@ class DotParser:
                 # For module resources like "module.vpc.google_compute_network.vpc"
                 # Extract just the resource type and name
                 if 'module.' in display_id:
-                    print(f"DEBUG: Processing module node: {display_id}")
+                    logger.debug(f"Processing module node: {display_id}")
                     # Get all parts of the module path
                     parts = display_id.split('.')
-                    print(f"DEBUG: Parts: {parts}")
+                    logger.debug(f"Module parts: {parts}")
                     
                     # Make sure we have at least 3 parts (module.name.resource)
                     if len(parts) >= 3:
                         # Store original module path as a string
                         module_parts = parts[:-2] if len(parts) > 2 else [parts[0]]
                         module_path = '.'.join(module_parts)
-                        print(f"DEBUG: Module path: {module_path}")
+                        logger.debug(f"Module path: {module_path}")
                         
                         # Get the resource part (last two components)
                         resource_parts = parts[-2:] if len(parts) >= 2 else [display_id]
                         resource_part = '.'.join(resource_parts)
-                        print(f"DEBUG: Resource part: {resource_part}")
+                        logger.debug(f"Resource part: {resource_part}")
                         
                         # Add module information to attributes
                         attrs['module_path'] = module_path
@@ -120,7 +120,7 @@ class DotParser:
                         if label == node_id:  # If label is the same as node_id, update it
                             label = resource_part
                 
-                print(f"DEBUG: Node attributes: {attrs}")
+                logger.debug(f"Node attributes: {attrs}")
                 nodes[node_id] = {
                     'id': node_id,
                     'display_id': display_id,
@@ -130,32 +130,78 @@ class DotParser:
                 node_ids.add(node_id)
         else:
             # Extract nodes with attributes - standard DOT style
-            node_pattern = r'(?:^|\s)"?([^"\s\[]+)"?\s*(?:\[([^\]]*)\])?'
-            for match in re.finditer(node_pattern, content):
-                node_id = match.group(1)
-                attrs_str = match.group(2) if match.group(2) else ""
-                
-                # Skip if this is an edge definition
-                if "->" in node_id:
+            # DOT keywords to exclude
+            dot_keywords = {'digraph', 'graph', 'subgraph', 'node', 'edge', 'strict'}
+            
+            # Strategy: Extract nodes from edges first, then find standalone node definitions
+            # This ensures we only get actual nodes, not syntax elements
+            
+            # Step 1: Collect all node IDs from edges (they're definitely nodes)
+            edge_node_ids = set()
+            edge_preview_pattern = r'(?:"([^"]+)"|([a-zA-Z_][a-zA-Z0-9_]*))\s*->\s*(?:"([^"]+)"|([a-zA-Z_][a-zA-Z0-9_]*))'
+            for edge_match in re.finditer(edge_preview_pattern, content):
+                for i in [1, 2, 3, 4]:
+                    node_id = edge_match.group(i)
+                    if node_id and node_id.lower() not in dot_keywords:
+                        edge_node_ids.add(node_id)
+            
+            # Step 2: Find standalone node definitions
+            # Pattern: node_id [attributes] where node_id is NOT part of an edge
+            # We'll match: identifier followed by [attributes] that's NOT preceded by ->
+            # More precise: match lines that look like node definitions
+            lines = content.split('\n')
+            for line in lines:
+                line = line.strip()
+                # Skip empty lines, comments, and graph declarations
+                if not line or line.startswith('//') or line.startswith('/*') or line.startswith('digraph') or line.startswith('graph') or line == '{' or line == '}':
                     continue
                 
-                # Parse attributes
-                attrs = self._parse_attributes(attrs_str)
-                
-                # Use label if available, otherwise use node_id
-                label = attrs.get('label', node_id).strip('"')
-                
-                # Skip if we've already processed this node
-                if node_id in nodes:
+                # Skip edge definitions (they're handled separately)
+                if '->' in line:
                     continue
                 
-                nodes[node_id] = {
-                    'id': node_id,
-                    'display_id': node_id,
-                    'label': label,
-                    'attributes': attrs
-                }
-                node_ids.add(node_id)
+                # Match node definition: node_id [attributes] or "node_id" [attributes]
+                # Pattern: start of line, optional whitespace, node_id (quoted or unquoted), optional [attributes], optional semicolon
+                node_match = re.match(r'^\s*(?:"([^"]+)"|([a-zA-Z_][a-zA-Z0-9_]*))(?:\s*\[([^\]]*)\])?\s*;?\s*$', line)
+                if node_match:
+                    node_id = node_match.group(1) if node_match.group(1) else node_match.group(2)
+                    attrs_str = node_match.group(3) if node_match.group(3) else ""
+                    
+                    if not node_id:
+                        continue
+                    
+                    # Skip keywords
+                    if node_id.lower() in dot_keywords:
+                        continue
+                    
+                    # Parse attributes
+                    attrs = self._parse_attributes(attrs_str)
+                    
+                    # Use label if available, otherwise use node_id
+                    label = attrs.get('label', node_id).strip('"')
+                    
+                    # Skip if already processed
+                    if node_id in nodes:
+                        continue
+                    
+                    nodes[node_id] = {
+                        'id': node_id,
+                        'display_id': node_id,
+                        'label': label,
+                        'attributes': attrs
+                    }
+                    node_ids.add(node_id)
+            
+            # Step 3: Add nodes from edges that weren't found as standalone definitions
+            for node_id in edge_node_ids:
+                if node_id not in nodes:
+                    nodes[node_id] = {
+                        'id': node_id,
+                        'display_id': node_id,
+                        'label': node_id,
+                        'attributes': {}
+                    }
+                    node_ids.add(node_id)
 
         # Extract edges
         if is_terraform:
@@ -178,20 +224,26 @@ class DotParser:
                 })
         else:
             # Standard DOT edge extraction
-            edge_pattern = r'"?([^"\s]+)"?\s*->\s*"?([^"\s\[]+)"?\s*(?:\[([^\]]*)\])?'
+            # Match: source -> target [attributes]
+            # Handle both quoted and unquoted node IDs
+            edge_pattern = r'(?:"([^"]+)"|([a-zA-Z_][a-zA-Z0-9_]*))\s*->\s*(?:"([^"]+)"|([a-zA-Z_][a-zA-Z0-9_]*))(?:\s*\[([^\]]*)\])?'
             edge_matches = re.finditer(edge_pattern, content)
             
             for match in edge_matches:
-                source_id = match.group(1)
-                target_id = match.group(2)
-                attrs_str = match.group(3) if match.group(3) else ""
+                # Get source and target from either quoted or unquoted match
+                source_id = match.group(1) if match.group(1) else match.group(2)
+                target_id = match.group(3) if match.group(3) else match.group(4)
+                attrs_str = match.group(5) if match.group(5) else ""
                 
-                # Parse attributes
-                attrs = self._parse_attributes(attrs_str)
+                if not source_id or not target_id:
+                    continue
                 
                 # Skip edges with non-existent nodes
                 if source_id not in nodes or target_id not in nodes:
                     continue
+                
+                # Parse attributes
+                attrs = self._parse_attributes(attrs_str)
                 
                 edges.append({
                     'source': source_id,

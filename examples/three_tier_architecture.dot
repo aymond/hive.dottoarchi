@@ -1,0 +1,60 @@
+digraph ThreeTierArchitecture {
+    // Presentation Tier
+    web_browser [label="Web Browser", type="technology", shape="box"];
+    mobile_client [label="Mobile Client", type="technology", shape="box"];
+    
+    web_server [label="Web Server (Nginx)", type="technology", shape="box"];
+    cdn [label="CDN", type="technology", shape="diamond"];
+    
+    // Application Tier
+    app_server_1 [label="Application Server 1", type="technology", shape="box"];
+    app_server_2 [label="Application Server 2", type="technology", shape="box"];
+    
+    presentation_layer [label="Presentation Layer", type="application", shape="box"];
+    business_logic [label="Business Logic Layer", type="application", shape="box"];
+    data_access_layer [label="Data Access Layer", type="application", shape="box"];
+    
+    // Data Tier
+    primary_db [label="Primary Database", type="technology", shape="box"];
+    replica_db [label="Replica Database", type="technology", shape="box"];
+    cache_layer [label="Cache Layer (Redis)", type="technology", shape="box"];
+    file_storage [label="File Storage", type="technology", shape="box"];
+    
+    // Infrastructure
+    load_balancer [label="Load Balancer", type="technology", shape="diamond"];
+    firewall [label="Firewall", type="technology", shape="box"];
+    
+    // User to Presentation
+    web_browser -> cdn [label="requests from"];
+    mobile_client -> cdn [label="requests from"];
+    cdn -> web_server [label="serves or proxies to"];
+    
+    // Presentation Tier
+    web_server -> firewall [label="protected by"];
+    firewall -> load_balancer [label="routes to"];
+    load_balancer -> app_server_1 [label="distributes to"];
+    load_balancer -> app_server_2 [label="distributes to"];
+    
+    // Application Tier Layers
+    app_server_1 -> presentation_layer [label="hosts"];
+    app_server_2 -> presentation_layer [label="hosts"];
+    presentation_layer -> business_logic [label="calls"];
+    business_logic -> data_access_layer [label="uses"];
+    
+    // Data Access
+    data_access_layer -> cache_layer [label="checks"];
+    data_access_layer -> primary_db [label="writes to"];
+    data_access_layer -> replica_db [label="reads from"];
+    
+    // Database Replication
+    primary_db -> replica_db [label="replicates to"];
+    
+    // File Storage
+    presentation_layer -> file_storage [label="stores files in"];
+    business_logic -> file_storage [label="stores files in"];
+    
+    // Caching Strategy
+    business_logic -> cache_layer [label="caches in"];
+    presentation_layer -> cache_layer [label="caches in"];
+}
+

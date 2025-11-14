@@ -1,0 +1,95 @@
+digraph CloudInfrastructure {
+    // Users
+    end_user [label="End User", type="business", shape="ellipse"];
+    admin [label="System Administrator", type="business", shape="ellipse"];
+    
+    // Application Layer
+    web_app [label="Web Application", type="application", shape="box"];
+    api_service [label="REST API Service", type="application", shape="box"];
+    worker_service [label="Background Worker", type="application", shape="box"];
+    
+    // Cloud Services - Compute
+    ec2_web [label="EC2 Web Server", type="technology", shape="box"];
+    ec2_api [label="EC2 API Server", type="technology", shape="box"];
+    lambda_function [label="Lambda Function", type="application", shape="box"];
+    ecs_cluster [label="ECS Container Cluster", type="technology", shape="box"];
+    
+    // Cloud Services - Storage
+    s3_bucket [label="S3 Bucket", type="technology", shape="box"];
+    rds_database [label="RDS Database", type="technology", shape="box"];
+    dynamodb_table [label="DynamoDB Table", type="technology", shape="box"];
+    efs_storage [label="EFS File Storage", type="technology", shape="box"];
+    
+    // Cloud Services - Networking
+    vpc [label="VPC", type="technology", shape="box"];
+    public_subnet [label="Public Subnet", type="technology", shape="box"];
+    private_subnet [label="Private Subnet", type="technology", shape="box"];
+    alb [label="Application Load Balancer", type="technology", shape="diamond"];
+    cloudfront [label="CloudFront CDN", type="technology", shape="diamond"];
+    
+    // Cloud Services - Messaging
+    sqs_queue [label="SQS Queue", type="technology", shape="diamond"];
+    sns_topic [label="SNS Topic", type="technology", shape="diamond"];
+    
+    // Cloud Services - Security
+    security_group [label="Security Group", type="technology", shape="box"];
+    iam_role [label="IAM Role", type="technology", shape="box"];
+    
+    // Cloud Services - Monitoring
+    cloudwatch [label="CloudWatch", type="technology", shape="diamond"];
+    
+    // User to Application
+    end_user -> web_app [label="accesses"];
+    admin -> web_app [label="manages"];
+    
+    // Application to Cloud
+    web_app -> cloudfront [label="served via"];
+    cloudfront -> alb [label="routes to"];
+    alb -> ec2_web [label="load balances to"];
+    ec2_web -> web_app [label="hosts"];
+    
+    alb -> ec2_api [label="load balances to"];
+    ec2_api -> api_service [label="hosts"];
+    
+    // Compute Infrastructure
+    ec2_web -> public_subnet [label="deployed in"];
+    ec2_api -> private_subnet [label="deployed in"];
+    ecs_cluster -> private_subnet [label="deployed in"];
+    ecs_cluster -> worker_service [label="runs"];
+    
+    public_subnet -> vpc [label="part of"];
+    private_subnet -> vpc [label="part of"];
+    
+    // Security
+    ec2_web -> security_group [label="protected by"];
+    ec2_api -> security_group [label="protected by"];
+    rds_database -> security_group [label="protected by"];
+    
+    ec2_web -> iam_role [label="uses"];
+    ec2_api -> iam_role [label="uses"];
+    lambda_function -> iam_role [label="uses"];
+    
+    // Data Access
+    api_service -> rds_database [label="queries"];
+    api_service -> dynamodb_table [label="reads/writes"];
+    web_app -> s3_bucket [label="stores files in"];
+    worker_service -> s3_bucket [label="processes files from"];
+    ec2_web -> efs_storage [label="mounts"];
+    
+    // Messaging
+    api_service -> sqs_queue [label="sends messages to"];
+    worker_service -> sqs_queue [label="consumes from"];
+    api_service -> sns_topic [label="publishes to"];
+    lambda_function -> sns_topic [label="subscribes to"];
+    
+    // Serverless
+    api_service -> lambda_function [label="triggers"];
+    lambda_function -> dynamodb_table [label="writes to"];
+    
+    // Monitoring
+    ec2_web -> cloudwatch [label="sends metrics to"];
+    ec2_api -> cloudwatch [label="sends metrics to"];
+    lambda_function -> cloudwatch [label="sends logs to"];
+    rds_database -> cloudwatch [label="sends metrics to"];
+}
+

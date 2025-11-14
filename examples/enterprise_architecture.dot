@@ -1,0 +1,57 @@
+digraph EnterpriseArchitecture {
+    // Business Layer
+    customer [label="Customer", type="business", shape="ellipse"];
+    sales_team [label="Sales Team", type="business", shape="ellipse"];
+    
+    order_process [label="Order Processing", type="business", shape="box"];
+    payment_process [label="Payment Processing", type="business", shape="box"];
+    fulfillment_process [label="Fulfillment Process", type="business", shape="box"];
+    
+    // Application Layer
+    crm_system [label="CRM System", type="application", shape="box"];
+    order_management [label="Order Management System", type="application", shape="box"];
+    payment_gateway [label="Payment Gateway", type="application", shape="box"];
+    inventory_system [label="Inventory System", type="application", shape="box"];
+    shipping_system [label="Shipping System", type="application", shape="box"];
+    
+    // Technology Layer
+    web_server [label="Web Server", type="technology", shape="box"];
+    app_server [label="Application Server", type="technology", shape="box"];
+    database_server [label="Database Server", type="technology", shape="box"];
+    message_queue [label="Message Queue", type="technology", shape="diamond"];
+    
+    // Business Relationships
+    customer -> order_process [label="places"];
+    sales_team -> order_process [label="manages"];
+    order_process -> payment_process [label="triggers"];
+    payment_process -> fulfillment_process [label="triggers"];
+    
+    // Business to Application
+    order_process -> crm_system [label="uses"];
+    order_process -> order_management [label="uses"];
+    payment_process -> payment_gateway [label="uses"];
+    fulfillment_process -> inventory_system [label="uses"];
+    fulfillment_process -> shipping_system [label="uses"];
+    
+    // Application Relationships
+    crm_system -> order_management [label="provides data to"];
+    order_management -> payment_gateway [label="sends payment request"];
+    order_management -> inventory_system [label="checks availability"];
+    order_management -> shipping_system [label="creates shipment"];
+    order_management -> message_queue [label="publishes events"];
+    inventory_system -> message_queue [label="subscribes to"];
+    
+    // Application to Technology
+    crm_system -> web_server [label="runs on"];
+    order_management -> app_server [label="runs on"];
+    payment_gateway -> app_server [label="runs on"];
+    inventory_system -> app_server [label="runs on"];
+    shipping_system -> app_server [label="runs on"];
+    
+    order_management -> database_server [label="stores data in"];
+    inventory_system -> database_server [label="stores data in"];
+    crm_system -> database_server [label="stores data in"];
+    
+    app_server -> message_queue [label="connects to"];
+}
+

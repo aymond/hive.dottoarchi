@@ -204,60 +204,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Get the session ID from the URL
         const sessionId = window.location.pathname.split('/').pop();
         
-        // Fetch the XML directly
-        fetch(`/api/archimate-data/${sessionId}`)
-            .then(response => {
-                if (!response.ok) {
-                    if (response.status === 404) {
-                        throw new Error('Session has expired. Please convert your file again.');
-                    } else {
-                        return response.json().then(data => {
-                            throw new Error(data.error || 'Network response was not ok');
-                        });
-                    }
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (!data || !data.elements || !data.relationships) {
-                    throw new Error('Invalid data structure received from the server');
-                }
-                
-                // Create a request to convert the data to XML
-                return fetch('/convert', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        archimate_data: data
-                    })
-                });
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to generate XML');
-                }
-                return response.blob();
-            })
-            .then(blob => {
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = `${filename}.xml`;
-                link.click();
-            })
-            .catch(error => {
-                console.error('Error downloading XML:', error);
-                
-                // Show a more helpful error message
-                if (error.message.includes('Session has expired')) {
-                    alert('Session has expired. Please go back to the home page and convert your file again.');
-                    // Optionally redirect after a short delay
-                    setTimeout(() => window.location.href = '/', 3000);
-                } else {
-                    alert(`Error downloading XML: ${error.message}`);
-                }
-            });
+        // Direct download from session
+        const link = document.createElement('a');
+        link.href = `/download/${sessionId}`;
+        link.download = `${filename}.xml`;
+        link.click();
     });
 
     // Add tooltips to nodes

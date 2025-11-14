@@ -1,0 +1,74 @@
+digraph ApplicationIntegration {
+    // Legacy Systems
+    legacy_erp [label="Legacy ERP System", type="application", shape="box"];
+    mainframe [label="Mainframe System", type="application", shape="box"];
+    
+    // Modern Applications
+    crm_system [label="CRM System", type="application", shape="box"];
+    ecommerce_platform [label="E-Commerce Platform", type="application", shape="box"];
+    mobile_app [label="Mobile Application", type="application", shape="box"];
+    
+    // Integration Layer
+    esb [label="Enterprise Service Bus", type="application", shape="diamond"];
+    api_gateway [label="API Gateway", type="application", shape="diamond"];
+    message_broker [label="Message Broker", type="application", shape="diamond"];
+    
+    // Integration Services
+    data_transformation [label="Data Transformation Service", type="application", shape="box"];
+    orchestration_service [label="Orchestration Service", type="application", shape="box"];
+    adapter_erp [label="ERP Adapter", type="application", shape="box"];
+    adapter_mainframe [label="Mainframe Adapter", type="application", shape="box"];
+    
+    // Data Layer
+    data_warehouse [label="Data Warehouse", type="technology", shape="box"];
+    operational_db [label="Operational Database", type="technology", shape="box"];
+    
+    // External Services
+    payment_gateway [label="Payment Gateway", type="application", shape="box"];
+    shipping_provider [label="Shipping Provider API", type="application", shape="box"];
+    
+    // User Access
+    mobile_app -> api_gateway [label="calls"];
+    ecommerce_platform -> api_gateway [label="calls"];
+    
+    // API Gateway to Services
+    api_gateway -> crm_system [label="routes to"];
+    api_gateway -> orchestration_service [label="routes to"];
+    
+    // Integration Hub
+    crm_system -> esb [label="publishes to"];
+    ecommerce_platform -> esb [label="publishes to"];
+    orchestration_service -> esb [label="uses"];
+    
+    // Legacy Integration
+    esb -> adapter_erp [label="routes to"];
+    adapter_erp -> legacy_erp [label="connects to"];
+    
+    esb -> adapter_mainframe [label="routes to"];
+    adapter_mainframe -> mainframe [label="connects to"];
+    
+    // Data Transformation
+    esb -> data_transformation [label="transforms via"];
+    data_transformation -> data_warehouse [label="loads to"];
+    
+    // Orchestration
+    orchestration_service -> crm_system [label="orchestrates"];
+    orchestration_service -> legacy_erp [label="orchestrates"];
+    orchestration_service -> payment_gateway [label="orchestrates"];
+    orchestration_service -> shipping_provider [label="orchestrates"];
+    
+    // Messaging
+    crm_system -> message_broker [label="publishes events to"];
+    ecommerce_platform -> message_broker [label="publishes events to"];
+    legacy_erp -> message_broker [label="publishes events to"];
+    
+    // Data Access
+    crm_system -> operational_db [label="stores in"];
+    ecommerce_platform -> operational_db [label="stores in"];
+    data_warehouse -> operational_db [label="sources from"];
+    
+    // External Integration
+    ecommerce_platform -> payment_gateway [label="integrates with"];
+    ecommerce_platform -> shipping_provider [label="integrates with"];
+}
+

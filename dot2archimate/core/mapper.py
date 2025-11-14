@@ -137,8 +137,8 @@ class ArchimateMapper:
             display_id = node.get('display_id', node_id)
             attributes = node['attributes']
             
-            print(f"DEBUG: Mapping node in mapper: id={node_id}, display_id={display_id}")
-            print(f"DEBUG: Node attributes in mapper: {attributes}")
+            logger.debug(f"Mapping node in mapper: id={node_id}, display_id={display_id}")
+            logger.debug(f"Node attributes in mapper: {attributes}")
             
             logger.info(f"Mapping node: id={node_id}, display_id={display_id}")
             
@@ -177,7 +177,7 @@ class ArchimateMapper:
             
             # Add module information to documentation if available
             if 'module_path' in attributes:
-                print(f"DEBUG: Found module_path in attributes: {attributes['module_path']}")
+                logger.debug(f"Found module_path in attributes: {attributes['module_path']}")
                 module_info = f"Module: {attributes['module_path']}"
                 if documentation:
                     documentation = f"{documentation}\n\n{module_info}"
@@ -192,7 +192,7 @@ class ArchimateMapper:
             if 'module_path' in attributes:
                 properties['module_path'] = attributes['module_path']
             
-            print(f"DEBUG: Final properties: {properties}")
+            logger.debug(f"Final properties: {properties}")
 
             return {
                 'id': archimate_id,
@@ -202,9 +202,7 @@ class ArchimateMapper:
                 'properties': properties
             }
         except Exception as e:
-            logger.error(f"Error in _map_node for {node.get('id', 'unknown')}: {str(e)}")
-            import traceback
-            print(f"DEBUG: Exception traceback: {traceback.format_exc()}")
+            logger.error(f"Error in _map_node for {node.get('id', 'unknown')}: {str(e)}", exc_info=True)
             raise
 
     def _map_edge(self, edge: Dict[str, Any], nodes: Dict[str, Dict[str, Any]], is_terraform: bool = False) -> Dict[str, Any]:

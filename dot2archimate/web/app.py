@@ -6,7 +6,9 @@ import json
 import uuid
 import yaml
 import secrets
+import time
 from datetime import timedelta
+from pathlib import Path
 
 from dot2archimate.core.parser import DotParser
 from dot2archimate.core.mapper import ArchimateMapper
@@ -23,11 +25,118 @@ app = Flask(__name__,
             template_folder=os.path.join(os.path.dirname(__file__), 'templates'),
             static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 
-# Configure secure session
+# Configure secure session (minimal - we use file-based storage instead)
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(16))
-app.config['SESSION_TYPE'] = 'filesystem'
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
-app.config['SESSION_USE_SIGNER'] = True
+# Note: We don't use Flask sessions for data storage, only for flash messages
+# Flask sessions are cookie-based and have size limits, so we use file-based storage
+
+# File-based storage for visualization data (since Flask sessions have size limits)
+# Use /tmp in container or system temp directory
+STORAGE_DIR = Path('/tmp') / 'dot2archimate_sessions'
+try:
+    STORAGE_DIR.mkdir(exist_ok=True, mode=0o755)
+    logger.info(f"Session storage directory: {STORAGE_DIR}")
+except Exception as e:
+    logger.error(f"Failed to create storage directory {STORAGE_DIR}: {e}")
+    # Fallback to system temp directory
+    STORAGE_DIR = Path(tempfile.gettempdir()) / 'dot2archimate_sessions'
+    STORAGE_DIR.mkdir(exist_ok=True, mode=0o755)
+    logger.info(f"Using fallback storage directory: {STORAGE_DIR}")
+
+SESSION_TIMEOUT = 3600  # 1 hour in seconds
+
+def save_session_data(session_id: str, data: dict):
+    """Save session data to a file."""
+    try:
+        file_path = STORAGE_DIR / f"{session_id}.json"
+        logger.info(f"Attempting to save session {session_id} to {file_path}")
+        
+        # Ensure storage directory exists
+        STORAGE_DIR.mkdir(exist_ok=True, mode=0o755)
+        
+        # Create a copy to avoid modifying the original
+        save_data = {
+            'archimate_data': data.get('archimate_data'),
+            'xml_output': data.get('xml_output'),
+            'filename': data.get('filename'),
+            'created_at': time.time()
+        }
+        
+        logger.debug(f"Session data prepared, archimate_data keys: {list(save_data.get('archimate_data', {}).keys())}")
+        
+        # Write file with explicit flush to ensure it's written
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(save_data, f, default=str)  # default=str handles any non-serializable types
+            f.flush()
+            os.fsync(f.fileno())  # Force write to disk
+        
+        # Verify file was created
+        if not file_path.exists():
+            raise IOError(f"File was not created: {file_path}")
+        
+        file_size = file_path.stat().st_size
+        logger.info(f"Successfully saved session data to {file_path} (size: {file_size} bytes)")
+        
+        # Double-check we can read it back
+        with open(file_path, 'r', encoding='utf-8') as f:
+            test_data = json.load(f)
+            if 'archimate_data' not in test_data:
+                raise ValueError("Saved file does not contain archimate_data")
+        
+        logger.info(f"Verified session file is readable: {file_path}")
+    except Exception as e:
+        logger.error(f"Error saving session data: {e}", exc_info=True)
+        raise
+
+def load_session_data(session_id: str) -> dict:
+    """Load session data from a file."""
+    try:
+        file_path = STORAGE_DIR / f"{session_id}.json"
+        logger.info(f"Loading session from: {file_path}")
+        logger.info(f"Storage directory exists: {STORAGE_DIR.exists()}, is_dir: {STORAGE_DIR.is_dir()}")
+        
+        # List all files in storage directory for debugging
+        if STORAGE_DIR.exists():
+            files = list(STORAGE_DIR.glob("*.json"))
+            logger.info(f"Files in storage directory: {[f.name for f in files]}")
+        
+        if not file_path.exists():
+            logger.warning(f"Session file not found: {file_path} (absolute: {file_path.absolute()})")
+            return None
+        
+        # Check if session has expired
+        file_age = time.time() - file_path.stat().st_mtime
+        if file_age > SESSION_TIMEOUT:
+            logger.warning(f"Session {session_id} has expired (age: {file_age}s)")
+            file_path.unlink()  # Delete expired session
+            return None
+        
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        logger.info(f"Successfully loaded session {session_id}")
+        return data
+    except Exception as e:
+        logger.error(f"Error loading session data for {session_id}: {e}", exc_info=True)
+        return None
+
+def delete_session_data(session_id: str):
+    """Delete session data file."""
+    file_path = STORAGE_DIR / f"{session_id}.json"
+    if file_path.exists():
+        file_path.unlink()
+        logger.debug(f"Deleted session data file {file_path}")
+
+def cleanup_expired_sessions():
+    """Clean up expired session files."""
+    current_time = time.time()
+    for file_path in STORAGE_DIR.glob("*.json"):
+        try:
+            file_age = current_time - file_path.stat().st_mtime
+            if file_age > SESSION_TIMEOUT:
+                file_path.unlink()
+                logger.debug(f"Cleaned up expired session: {file_path.name}")
+        except Exception as e:
+            logger.warning(f"Error cleaning up session file {file_path}: {e}")
 
 # Initialize components
 parser = DotParser()
@@ -109,25 +218,38 @@ def convert():
         archimate_data = mapper.map_to_archimate(graph_data)
         xml_output = generator.generate_xml(archimate_data)
         
-        # Check if visualization is requested
-        if request.form.get('visualize') == 'true':
-            # Make session permanent to extend its lifetime
-            session.permanent = True
-            
-            # Store the data in session for visualization
+        # Default behavior: always visualize (unless explicitly requesting download)
+        if request.form.get('download_only') != 'true':
+            # Generate session ID and store data in file-based storage
             session_id = str(uuid.uuid4())
-            session[session_id] = {
-                'archimate_data': json.dumps(archimate_data),
+            session_data = {
+                'archimate_data': archimate_data,  # Store as dict, not JSON string
+                'xml_output': xml_output,
                 'filename': os.path.splitext(filename)[0]
             }
             
-            # Force session to be saved
-            session.modified = True
+            # Save to file-based storage
+            try:
+                save_session_data(session_id, session_data)
+                
+                # Verify the file exists before redirecting
+                file_path = STORAGE_DIR / f"{session_id}.json"
+                if not file_path.exists():
+                    raise IOError(f"Session file was not created: {file_path}")
+                
+                logger.info(f"Created visualization session: {session_id}, storage: {STORAGE_DIR}, file: {file_path}")
+            except Exception as e:
+                logger.error(f"Failed to save session data: {e}", exc_info=True)
+                flash(f"Error saving session: {str(e)}", 'error')
+                return redirect(url_for('index'))
             
-            logger.info(f"Created visualization session: {session_id}")
+            # Clean up old sessions periodically
+            cleanup_expired_sessions()
+            
+            logger.info(f"Redirecting to visualization for session: {session_id}")
             return redirect(url_for('visualize', session_id=session_id))
         
-        # Return the XML as a downloadable file
+        # Return the XML as a downloadable file (only if download_only is explicitly requested)
         response = Response(xml_output, mimetype='application/xml')
         response.headers['Content-Disposition'] = f'attachment; filename={os.path.splitext(filename)[0]}.xml'
         
@@ -143,37 +265,36 @@ def convert():
 def visualize(session_id):
     """Visualize ArchiMate data."""
     try:
-        if session_id not in session:
+        # Load data from file-based storage
+        data = load_session_data(session_id)
+        
+        if not data:
             logger.warning(f"Session {session_id} not found - session may have expired")
             flash('Visualization session not found or has expired. Please convert your file again.', 'error')
             return redirect(url_for('index'))
         
-        data = session[session_id]
-        if not data or 'archimate_data' not in data:
+        if 'archimate_data' not in data:
             logger.warning(f"Session {session_id} exists but data is missing or invalid")
             flash('Visualization data is incomplete. Please convert your file again.', 'error')
             return redirect(url_for('index'))
             
         try:
-            archimate_data = json.loads(data['archimate_data'])
+            archimate_data = data['archimate_data']  # Already a dict, not JSON string
             filename = data.get('filename', 'unnamed')
             copyright_year = legal_config.get('impressum', {}).get('copyright_year', '2025')
-            
-            # Reset session expiry by marking as modified
-            session.modified = True
             
             return render_template('visualize.html', 
                                   filename=filename,
                                   elements=json.dumps(archimate_data['elements']),
                                   relationships=json.dumps(archimate_data['relationships']),
                                   copyright_year=copyright_year)
-        except json.JSONDecodeError:
-            logger.error(f"Failed to decode JSON data in session {session_id}")
+        except (KeyError, TypeError) as e:
+            logger.error(f"Failed to process data in session {session_id}: {e}")
             flash('Error processing visualization data. Please convert your file again.', 'error')
             return redirect(url_for('index'))
     
     except Exception as e:
-        logger.error(f"Error visualizing: {str(e)}")
+        logger.error(f"Error visualizing: {str(e)}", exc_info=True)
         flash(f"Error: {str(e)}", 'error')
         return redirect(url_for('index'))
 
@@ -181,26 +302,56 @@ def visualize(session_id):
 def get_archimate_data(session_id):
     """API endpoint to get ArchiMate data for visualization."""
     try:
-        if session_id not in session:
+        # Load data from file-based storage
+        data = load_session_data(session_id)
+        
+        if not data:
             logger.warning(f"API: Session {session_id} not found")
             return jsonify({'error': 'Session not found or has expired'}), 404
         
-        data = session[session_id]
-        if not data or 'archimate_data' not in data:
+        if 'archimate_data' not in data:
             logger.warning(f"API: Session {session_id} exists but data is missing or invalid")
             return jsonify({'error': 'Invalid or incomplete session data'}), 400
             
         try:
-            archimate_data = json.loads(data['archimate_data'])
-            # Reset session expiry
-            session.modified = True
+            archimate_data = data['archimate_data']  # Already a dict
             return jsonify(archimate_data)
-        except json.JSONDecodeError:
-            logger.error(f"API: Failed to decode JSON data in session {session_id}")
-            return jsonify({'error': 'Failed to decode session data'}), 500
+        except (KeyError, TypeError) as e:
+            logger.error(f"API: Failed to process data in session {session_id}: {e}")
+            return jsonify({'error': 'Failed to process session data'}), 500
     except Exception as e:
-        logger.error(f"API error: {str(e)}")
+        logger.error(f"API error: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
+
+@app.route('/download/<session_id>')
+def download_xml(session_id):
+    """Download XML file from session."""
+    try:
+        # Load data from file-based storage
+        data = load_session_data(session_id)
+        
+        if not data:
+            logger.warning(f"Download: Session {session_id} not found")
+            flash('Session not found or has expired. Please convert your file again.', 'error')
+            return redirect(url_for('index'))
+        
+        if 'xml_output' not in data:
+            logger.warning(f"Download: Session {session_id} exists but XML data is missing")
+            flash('XML data not found. Please convert your file again.', 'error')
+            return redirect(url_for('index'))
+        
+        filename = data.get('filename', 'archimate')
+        xml_output = data['xml_output']
+        
+        response = Response(xml_output, mimetype='application/xml')
+        response.headers['Content-Disposition'] = f'attachment; filename={filename}.xml'
+        
+        logger.info(f"Downloaded XML for session: {session_id}")
+        return response
+    except Exception as e:
+        logger.error(f"Download error: {str(e)}", exc_info=True)
+        flash(f"Error downloading file: {str(e)}", 'error')
+        return redirect(url_for('index'))
 
 @app.route('/impressum')
 def impressum():
@@ -215,4 +366,7 @@ def privacy():
     return render_template('privacy.html', config=privacy_config)
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    debug_mode = os.environ.get('DEBUG', 'False').lower() == 'true'
+    host = os.environ.get('HOST', '127.0.0.1')
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=debug_mode, host=host, port=port) 

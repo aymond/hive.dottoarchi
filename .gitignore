@@ -43,4 +43,7 @@ htmlcov/
 .pytest_cache/
 
 # Legal settings
-dot2archimate/web/config/legal_settings.yaml 
+dot2archimate/web/config/legal_settings.yaml
+
+# Environment variables
+.env 
