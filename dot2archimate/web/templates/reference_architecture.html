@@ -97,21 +97,6 @@
         .intro-section h2 {
             margin-top: 0;
         }
-        .preview-code {
-            background: #f5f5f5;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 1rem;
-            margin-top: 1rem;
-            font-family: 'Courier New', monospace;
-            font-size: 0.85rem;
-            overflow-x: auto;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        .preview-code code {
-            color: #333;
-        }
     </style>
 </head>
 <body>
@@ -161,9 +146,6 @@
                             </div>
                             <div class="use-case">
                                 <strong>Use Case:</strong> {{ example.use_case }}
-                            </div>
-                            <div class="preview-code">
-                                <code>{{ example.preview }}</code>
                             </div>
                             <div class="actions">
                                 <form action="{{ url_for('convert_example', filename=example.filename) }}" method="post" style="flex: 1; min-width: 120px;">

@@ -6,7 +6,7 @@ services:
     image: dot2archimate
     container_name: dot2archimate
     ports:
-      - "5000:5000"
+      - "5001:5000"
     volumes:
       - ./examples:/app/examples
       - ./output:/app/output

@@ -424,8 +424,7 @@ def reference_architecture():
                         'title': example_descriptions[filename]['title'],
                         'description': example_descriptions[filename]['description'],
                         'use_case': example_descriptions[filename]['use_case'],
-                        'size': len(content),
-                        'preview': content[:500] + '...' if len(content) > 500 else content
+                        'size': len(content)
                     })
                 except Exception as e:
                     logger.error(f"Error reading example file {filename}: {e}")
@@ -478,22 +477,38 @@ def convert_example(filename):
         with open(file_path, 'r', encoding='utf-8') as f:
             dot_content = f.read()
         
-        # Process the conversion
-        parser = DotParser()
-        mapper = ArchimateMapper()
-        generator = ArchimateXMLGenerator()
-        
+        # Process the conversion using the same global instances as the regular convert route
+        # This ensures consistent mapping and coloring
         graph_data = parser.parse_string(dot_content)
         archimate_data = mapper.map_to_archimate(graph_data)
         xml_output = generator.generate_xml(archimate_data)
         
-        # Create session and save data
+        # Generate session ID and store data in file-based storage
+        # Use the same pattern as the regular convert route
         session_id = str(uuid.uuid4())
-        save_session_data(session_id, {
-            'archimate_data': archimate_data,
+        session_data = {
+            'archimate_data': archimate_data,  # Store as dict, not JSON string
             'xml_output': xml_output,
             'filename': filename.replace('.dot', '')
-        })
+        }
+        
+        # Save to file-based storage
+        try:
+            save_session_data(session_id, session_data)
+            
+            # Verify the file exists before redirecting
+            file_path = STORAGE_DIR / f"{session_id}.json"
+            if not file_path.exists():
+                raise IOError(f"Session file was not created: {file_path}")
+            
+            logger.info(f"Created visualization session: {session_id}, storage: {STORAGE_DIR}, file: {file_path}")
+        except Exception as e:
+            logger.error(f"Failed to save session data: {e}", exc_info=True)
+            flash(f"Error saving session: {str(e)}", 'error')
+            return redirect(url_for('reference_architecture'))
+        
+        # Clean up old sessions periodically
+        cleanup_expired_sessions()
         
         logger.info(f"Converted example file {filename} to session {session_id}")
         return redirect(url_for('visualize', session_id=session_id))
