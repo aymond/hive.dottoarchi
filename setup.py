@@ -17,7 +17,6 @@ setup(
     entry_points={
         'console_scripts': [
             'dot2archimate=dot2archimate.cli.commands:cli',
-            'dot2archimate-web=dot2archimate.web.run:main',
         ],
     },
 ) 

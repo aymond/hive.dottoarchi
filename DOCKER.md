@@ -106,10 +106,10 @@ The Docker container includes a template for legal settings. To configure:
 
    ```bash
    # Copy the template if you haven't already
-   cp config/legal_settings.yml.template config/legal_settings.yaml
+   cp dot2archimate/web/config/legal_settings.yml.template dot2archimate/web/config/legal_settings.yaml
    
    # Edit the file
-   nano config/legal_settings.yaml
+   nano dot2archimate/web/config/legal_settings.yaml
    ```
 
 ## Production Deployment
