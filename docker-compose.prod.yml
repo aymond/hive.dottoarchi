@@ -1,0 +1,55 @@
+services:
+  dot2archimate:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    image: dot2archimate:prod
+    container_name: dot2archimate-prod
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount persistent volumes for data
+      - ./examples:/app/examples:ro  # Read-only examples
+      - dot2archimate_output:/app/output
+      - dot2archimate_config:/app/dot2archimate/web/config
+      # Persistent session storage (optional - can use tmpfs for ephemeral)
+      - dot2archimate_sessions:/tmp/dot2archimate_sessions
+    env_file:
+      - .env.prod
+    environment:
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Resource limits for production
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    # Security: run as non-root user (already set in Dockerfile)
+    security_opt:
+      - no-new-privileges:true
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  dot2archimate_output:
+    driver: local
+  dot2archimate_config:
+    driver: local
+  dot2archimate_sessions:
+    driver: local
+

@@ -365,6 +365,25 @@ def privacy():
     privacy_config = legal_config.get('privacy', {})
     return render_template('privacy.html', config=privacy_config)
 
+@app.route('/health')
+def health():
+    """Health check endpoint for monitoring and load balancers."""
+    try:
+        # Check if storage directory is accessible
+        storage_accessible = STORAGE_DIR.exists() and os.access(STORAGE_DIR, os.W_OK)
+        return jsonify({
+            'status': 'healthy',
+            'storage': 'accessible' if storage_accessible else 'inaccessible',
+            'timestamp': time.time()
+        }), 200
+    except Exception as e:
+        logger.error(f"Health check failed: {e}", exc_info=True)
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': time.time()
+        }), 503
+
 if __name__ == '__main__':
     debug_mode = os.environ.get('DEBUG', 'False').lower() == 'true'
     host = os.environ.get('HOST', '127.0.0.1')

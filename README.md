@@ -52,6 +52,8 @@ docker run -it dot2archimate legal-config --create
 
 For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
 
+For production deployment, see [DEPLOYMENT.md](DEPLOYMENT.md).
+
 #### Using Docker Compose
 
 Create a `docker-compose.yml` file:
