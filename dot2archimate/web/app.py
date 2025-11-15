@@ -365,6 +365,143 @@ def privacy():
     privacy_config = legal_config.get('privacy', {})
     return render_template('privacy.html', config=privacy_config)
 
+@app.route('/reference-architecture')
+def reference_architecture():
+    """Render the Reference Architecture page with example DOT files."""
+    examples_dir = Path('/app/examples')
+    if not examples_dir.exists():
+        # Fallback to relative path for local development
+        examples_dir = Path(__file__).parent.parent.parent.parent / 'examples'
+    
+    examples = []
+    example_descriptions = {
+        'sample.dot': {
+            'title': 'Basic Example',
+            'description': 'A simple example showing basic application and business layer relationships.',
+            'use_case': 'Learning the basics of DOT to ArchiMate conversion'
+        },
+        'enterprise_architecture.dot': {
+            'title': 'Enterprise Architecture',
+            'description': 'A comprehensive enterprise architecture example showing business processes, application systems, and technology infrastructure.',
+            'use_case': 'Enterprise architecture modeling, business-IT alignment'
+        },
+        'microservices_architecture.dot': {
+            'title': 'Microservices Architecture',
+            'description': 'A modern microservices architecture demonstrating API Gateway pattern, service discovery, and distributed data stores.',
+            'use_case': 'Microservices architecture documentation, service mesh design'
+        },
+        'cloud_infrastructure.dot': {
+            'title': 'Cloud Infrastructure',
+            'description': 'A cloud infrastructure example (AWS-focused) showing compute, storage, networking, messaging, and security services.',
+            'use_case': 'Cloud architecture documentation, infrastructure as code visualization'
+        },
+        'business_process.dot': {
+            'title': 'Business Process',
+            'description': 'A business process-focused diagram showing business actors, processes, services, and flows.',
+            'use_case': 'Business process modeling, BPMN alternative, process documentation'
+        },
+        'application_integration.dot': {
+            'title': 'Application Integration',
+            'description': 'An integration architecture example showing legacy system integration, modern applications, and integration patterns.',
+            'use_case': 'Integration architecture, legacy modernization, EAI documentation'
+        },
+        'three_tier_architecture.dot': {
+            'title': 'Three-Tier Architecture',
+            'description': 'A classic three-tier architecture showing presentation, application, and data tiers with infrastructure components.',
+            'use_case': 'Traditional application architecture, scalability patterns'
+        }
+    }
+    
+    if examples_dir.exists():
+        for file_path in sorted(examples_dir.glob('*.dot')):
+            filename = file_path.name
+            if filename in example_descriptions:
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    examples.append({
+                        'filename': filename,
+                        'title': example_descriptions[filename]['title'],
+                        'description': example_descriptions[filename]['description'],
+                        'use_case': example_descriptions[filename]['use_case'],
+                        'size': len(content),
+                        'preview': content[:500] + '...' if len(content) > 500 else content
+                    })
+                except Exception as e:
+                    logger.error(f"Error reading example file {filename}: {e}")
+    
+    return render_template('reference_architecture.html', examples=examples)
+
+@app.route('/example/<filename>')
+def example_file(filename):
+    """Serve an example DOT file."""
+    examples_dir = Path('/app/examples')
+    if not examples_dir.exists():
+        # Fallback to relative path for local development
+        examples_dir = Path(__file__).parent.parent.parent.parent / 'examples'
+    
+    file_path = examples_dir / filename
+    
+    # Security: ensure file is in examples directory and has .dot extension
+    if not filename.endswith('.dot') or not file_path.exists() or not str(file_path).startswith(str(examples_dir)):
+        flash('Example file not found.', 'error')
+        return redirect(url_for('reference_architecture'))
+    
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        response = Response(content, mimetype='text/plain')
+        response.headers['Content-Disposition'] = f'inline; filename={filename}'
+        return response
+    except Exception as e:
+        logger.error(f"Error serving example file {filename}: {e}", exc_info=True)
+        flash(f"Error loading example file: {str(e)}", 'error')
+        return redirect(url_for('reference_architecture'))
+
+@app.route('/example/<filename>/convert', methods=['POST'])
+def convert_example(filename):
+    """Convert an example DOT file directly."""
+    examples_dir = Path('/app/examples')
+    if not examples_dir.exists():
+        # Fallback to relative path for local development
+        examples_dir = Path(__file__).parent.parent.parent.parent / 'examples'
+    
+    file_path = examples_dir / filename
+    
+    # Security: ensure file is in examples directory and has .dot extension
+    if not filename.endswith('.dot') or not file_path.exists() or not str(file_path).startswith(str(examples_dir)):
+        flash('Example file not found.', 'error')
+        return redirect(url_for('reference_architecture'))
+    
+    try:
+        # Read the example file
+        with open(file_path, 'r', encoding='utf-8') as f:
+            dot_content = f.read()
+        
+        # Process the conversion
+        parser = DotParser()
+        mapper = ArchimateMapper()
+        generator = ArchimateXMLGenerator()
+        
+        graph_data = parser.parse_string(dot_content)
+        archimate_data = mapper.map_to_archimate(graph_data)
+        xml_output = generator.generate_xml(archimate_data)
+        
+        # Create session and save data
+        session_id = str(uuid.uuid4())
+        save_session_data(session_id, {
+            'archimate_data': archimate_data,
+            'xml_output': xml_output,
+            'filename': filename.replace('.dot', '')
+        })
+        
+        logger.info(f"Converted example file {filename} to session {session_id}")
+        return redirect(url_for('visualize', session_id=session_id))
+    except Exception as e:
+        logger.error(f"Error converting example file {filename}: {e}", exc_info=True)
+        flash(f"Error converting example: {str(e)}", 'error')
+        return redirect(url_for('reference_architecture'))
+
 @app.route('/health')
 def health():
     """Health check endpoint for monitoring and load balancers."""

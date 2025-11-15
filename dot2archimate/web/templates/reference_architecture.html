@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reference Architecture - DOT to ArchiMate Converter</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='img/favicon-16.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/legal.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        .example-card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .example-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .example-card h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.25rem;
+        }
+        .example-card .filename {
+            font-family: 'Courier New', monospace;
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+        .example-card .description {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+        .example-card .use-case {
+            background: #e3f2fd;
+            padding: 0.75rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+        .example-card .use-case strong {
+            color: #1976d2;
+        }
+        .example-card .actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .example-card .btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 0.75rem 1rem;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .example-card .btn-primary {
+            background: #1976d2;
+            color: white;
+        }
+        .example-card .btn-primary:hover {
+            background: #1565c0;
+        }
+        .example-card .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+        .example-card .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        .intro-section {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+        .intro-section h2 {
+            margin-top: 0;
+        }
+        .preview-code {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .preview-code code {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DOT to ArchiMate Converter</h1>
+            <p>Convert Graphviz DOT files to ArchiMate XML format</p>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="{{ url_for('index') }}">Home</a></li>
+                    <li><a href="{{ url_for('reference_architecture') }}" class="active">Reference Architecture</a></li>
+                    <li><a href="{{ url_for('impressum') }}">Impressum</a></li>
+                    <li><a href="{{ url_for('privacy') }}">Privacy Policy</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <main>
+            <div class="intro-section">
+                <h2>Reference Architecture Examples</h2>
+                <p>Explore our collection of example DOT files that demonstrate various architecture patterns and use cases. Each example can be converted to ArchiMate XML format and visualized directly in your browser.</p>
+                <p>These examples cover different architectural patterns including enterprise architecture, microservices, cloud infrastructure, business processes, and more.</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="messages">
+                        {% for category, message in messages %}
+                            <div class="message {{ category }}">
+                                <i class="fas fa-exclamation-circle"></i> {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% if examples %}
+                <div class="examples-grid">
+                    {% for example in examples %}
+                        <div class="example-card">
+                            <h3>{{ example.title }}</h3>
+                            <div class="filename">
+                                <i class="fas fa-file-code"></i> {{ example.filename }}
+                            </div>
+                            <div class="description">
+                                {{ example.description }}
+                            </div>
+                            <div class="use-case">
+                                <strong>Use Case:</strong> {{ example.use_case }}
+                            </div>
+                            <div class="preview-code">
+                                <code>{{ example.preview }}</code>
+                            </div>
+                            <div class="actions">
+                                <form action="{{ url_for('convert_example', filename=example.filename) }}" method="post" style="flex: 1; min-width: 120px;">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-exchange-alt"></i> Convert & Visualize
+                                    </button>
+                                </form>
+                                <a href="{{ url_for('example_file', filename=example.filename) }}" class="btn btn-secondary" target="_blank">
+                                    <i class="fas fa-eye"></i> View DOT
+                                </a>
+                                <a href="{{ url_for('example_file', filename=example.filename) }}" class="btn btn-secondary" download>
+                                    <i class="fas fa-download"></i> Download
+                                </a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="messages">
+                    <div class="message warning">
+                        <i class="fas fa-exclamation-triangle"></i> No example files found. Please ensure the examples directory is accessible.
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="info-section" style="margin-top: 3rem;">
+                <h2>How to Use These Examples</h2>
+                <ol style="line-height: 1.8;">
+                    <li><strong>Browse:</strong> Review the available architecture examples above</li>
+                    <li><strong>Convert & Visualize:</strong> Click "Convert & Visualize" to see the example converted to ArchiMate format</li>
+                    <li><strong>View DOT:</strong> Click "View DOT" to see the original DOT file content</li>
+                    <li><strong>Download:</strong> Download the DOT file to use as a template for your own architectures</li>
+                    <li><strong>Customize:</strong> Modify the downloaded DOT files to match your specific architecture needs</li>
+                </ol>
+
+                <h3 style="margin-top: 2rem;">ArchiMate Element Types</h3>
+                <p>These examples demonstrate various ArchiMate element types:</p>
+                <ul style="line-height: 1.8;">
+                    <li><strong>Business Layer:</strong> Business Actors, Business Processes, Business Objects</li>
+                    <li><strong>Application Layer:</strong> Application Components, Application Functions, Application Interfaces</li>
+                    <li><strong>Technology Layer:</strong> Technology Nodes, Technology Services, Technology Artifacts</li>
+                </ul>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; {{ copyright_year|default('2025') }} DOT to ArchiMate Converter | <a href="{{ url_for('impressum') }}">Impressum</a> | <a href="{{ url_for('privacy') }}">Privacy Policy</a></p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
+
