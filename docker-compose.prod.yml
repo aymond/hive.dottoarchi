@@ -11,7 +11,7 @@ services:
       # Mount persistent volumes for data
       - ./examples:/app/examples:ro  # Read-only examples
       - dot2archimate_output:/app/output
-      - dot2archimate_config:/app/dot2archimate/web/config
+      - ./config:/app/dot2archimate/web/config  # Bind mount for easy config editing
       # Persistent session storage (optional - can use tmpfs for ephemeral)
       - dot2archimate_sessions:/tmp/dot2archimate_sessions
     env_file:
@@ -47,8 +47,6 @@ services:
 
 volumes:
   dot2archimate_output:
-    driver: local
-  dot2archimate_config:
     driver: local
   dot2archimate_sessions:
     driver: local
